@@ -7,6 +7,7 @@
 #include <span>
 
 #include "dragon/sha1.h"
+#include "studio/cover_manager.h"
 #include "studio/library.h"
 
 using namespace dragon::studio;
@@ -123,6 +124,65 @@ void test_relocate_by_sha1() {
     assert(!lib.relocate_rom("ffff", dir));  // unknown game
 }
 
+void test_cover_manager() {
+    std::cout << "[Test] cover manager helper functions & candidate lookup...\n";
+    assert(CoverManager::is_image_file("cover.png"));
+    assert(CoverManager::is_image_file("COVER.PNG"));
+    assert(CoverManager::is_image_file("art.jpg"));
+    assert(CoverManager::is_image_file("photo.jpeg"));
+    assert(CoverManager::is_image_file("game.bmp"));
+    assert(CoverManager::is_image_file("box.webp"));
+    assert(!CoverManager::is_image_file("game.nes"));
+    assert(!CoverManager::is_image_file("rom.gba"));
+    assert(!CoverManager::is_image_file("doc.txt"));
+    assert(!CoverManager::is_image_file(""));
+
+    assert(CoverManager::get_system_name("nes") == "Nintendo - Nintendo Entertainment System");
+    assert(CoverManager::get_system_name("snes") == "Nintendo - Super Nintendo Entertainment System");
+    assert(CoverManager::get_system_name("gb") == "Nintendo - Game Boy");
+    assert(CoverManager::get_system_name("gbc") == "Nintendo - Game Boy Color");
+    assert(CoverManager::get_system_name("gba") == "Nintendo - Game Boy Advance");
+    assert(CoverManager::get_system_name("unknown").empty());
+
+    GameEntry tetris;
+    tetris.platform = "gb";
+    tetris.title = "Tetris";
+    tetris.rom_path = "roms/gb/tetris.gb";
+    auto tetris_cands = CoverManager::get_candidate_names(tetris);
+    assert(!tetris_cands.empty());
+    bool found_tetris_rev = false;
+    for (const auto& c : tetris_cands) {
+        if (c.find("Tetris (World) (Rev A)") != std::string::npos) {
+            found_tetris_rev = true;
+            break;
+        }
+    }
+    assert(found_tetris_rev);
+
+    GameEntry poke;
+    poke.platform = "gba";
+    poke.title = "Pokemon - FireRed Version";
+    auto poke_cands = CoverManager::get_candidate_names(poke);
+    assert(!poke_cands.empty());
+
+    // Manual cover assignment validation
+    const auto dir = fresh_dir("dragon_cover_t1");
+    const auto dummy_img = dir / "test_cover.png";
+    std::ofstream(dummy_img) << "dummy png content";
+
+    CoverManager mgr;
+    assert(!mgr.is_downloading("1234"));
+    auto assigned = mgr.assign_manual_cover("1234", dummy_img);
+    assert(!assigned.empty());
+    assert(std::filesystem::exists(assigned));
+    mgr.invalidate("1234");
+
+    // Invalid non-image file assignment must fail
+    const auto dummy_rom = dir / "test.nes";
+    std::ofstream(dummy_rom) << "dummy nes content";
+    assert(mgr.assign_manual_cover("5678", dummy_rom).empty());
+}
+
 }  // namespace
 
 int main() {
@@ -131,6 +191,7 @@ int main() {
     test_missing_and_corrupt();
     test_shelves_and_last_played();
     test_relocate_by_sha1();
+    test_cover_manager();
     std::cout << "All library tests passed.\n";
     return 0;
 }

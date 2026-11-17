@@ -24,12 +24,14 @@ add_library(studio_lib STATIC
   src/packager.cpp
   src/library.cpp
   src/library_view.cpp
+  src/cover_manager.cpp
   src/theme.cpp
   src/app.cpp)
 
-# toml++ is used privately by the game library (library.toml persistence).
+# toml++ and stb are used privately by the game library and cover manager.
 target_include_directories(studio_lib SYSTEM PRIVATE
-  ${CMAKE_SOURCE_DIR}/third_party/tomlplusplus)
+  ${CMAKE_SOURCE_DIR}/third_party/tomlplusplus
+  ${CMAKE_SOURCE_DIR}/third_party/stb)
 
 target_include_directories(studio_lib PUBLIC
   include
@@ -46,6 +48,10 @@ target_link_libraries(studio_lib PUBLIC
   gba_runtime
   SDL3::SDL3
   dragon_warnings)
+
+if(WIN32)
+  target_link_libraries(studio_lib PUBLIC urlmon wininet)
+endif()
 
 add_executable(dragon-studio src/main.cpp)
 target_link_libraries(dragon-studio PRIVATE studio_lib dragon_warnings)

@@ -7,6 +7,7 @@
 
 #include <SDL3/SDL.h>
 
+#include "studio/library.h"
 #include "studio/packager.h"
 #include "studio/pipeline.h"
 #include "studio/rom_detector.h"
@@ -39,6 +40,8 @@ private:
     void render_ready_hub();
     void render_error_view();
     void render_package_modal();
+    void render_library();
+    void track_library_state();
 
     SDL_Window* window_ = nullptr;
     SDL_Renderer* renderer_ = nullptr;
@@ -48,6 +51,13 @@ private:
 
     Pipeline pipeline_;
     RomInfo active_rom_;
+
+    // Persistent game library (shelves view) and bookkeeping for mode/playtime.
+    GameLibrary library_{GameLibrary::default_path()};
+    PipelineStage prev_stage_ = PipelineStage::Idle;
+    bool was_game_running_ = false;
+    int64_t game_start_unix_ = 0;
+    std::string library_notice_;
 
     // UI state
     bool fullscreen_option_ = false;

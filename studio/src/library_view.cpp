@@ -209,13 +209,14 @@ void StudioApp::render_library() {
         if (library_.relocate_rom(g.sha1, g.rom_path.parent_path())) {
             library_notice_.clear();
             open_sha = g.sha1;
+            current_view_ = StudioView::Recompiler;
         } else {
             library_notice_ = "No se encuentra la ROM de \"" + g.title +
                               "\". Usa \"Abrir ROM...\" para volver a seleccionarla.";
         }
     };
 
-    // --- Continue playing -------------------------------------------------
+    // --- Continue playing / Welcome Hero ----------------------------------
     if (const GameEntry* last = library_.last_played()) {
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ThemeColors::SurfaceAlt);
         ImGui::BeginChild("Hero", ImVec2(0, 120.0f), true, ImGuiWindowFlags_NoScrollbar);
@@ -249,10 +250,34 @@ void StudioApp::render_library() {
         ImGui::TextColored(ThemeColors::TextMuted, "Tiempo jugado: %s",
                            format_playtime(last->playtime_s).c_str());
         ImGui::Dummy(ImVec2(0, 4.f));
-        if (ImGui::Button("▶ Abrir", ImVec2(140.f, 36.f))) {
+        if (ImGui::Button("▶ Jugar", ImVec2(140.f, 36.f))) {
             open_entry(*last);
         }
         ImGui::EndGroup();
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
+    } else {
+        // Welcome banner for new library
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ThemeColors::SurfaceAlt);
+        ImGui::BeginChild("WelcomeHero", ImVec2(0, 110.0f), true, ImGuiWindowFlags_NoScrollbar);
+        ImGui::PushFont(fonts_.h2);
+        ImGui::TextColored(ThemeColors::AccentCyan, "BIBLIOTECA DE JUEGOS");
+        ImGui::PopFont();
+        ImGui::TextColored(ThemeColors::TextPrimary,
+                           "Recompila tus juegos favoritos de NES, SNES, Game Boy y GBA en C99 nativo.");
+        ImGui::TextColored(ThemeColors::TextMuted,
+                           "Arrastra tus ROMs (.nes, .sfc, .gb, .gba) a esta ventana o usa el boton para anadirlos a tu coleccion.");
+        ImGui::Dummy(ImVec2(0, 4.f));
+        if (ImGui::Button("📂 Abrir archivo ROM...", ImVec2(180.f, 32.f))) {
+            open_rom_file_dialog();
+        }
+        if (std::filesystem::exists("roms/test/nestest.nes")) {
+            ImGui::SameLine();
+            if (ImGui::Button("▶ Probar nestest.nes de prueba", ImVec2(230.f, 32.f))) {
+                load_rom("roms/test/nestest.nes");
+            }
+        }
         ImGui::EndChild();
         ImGui::PopStyleColor();
         ImGui::Spacing();
@@ -265,6 +290,10 @@ void StudioApp::render_library() {
 
     // --- Library controls ---
     if (!library_.entries().empty()) {
+        if (ImGui::Button("📂 Importar otra ROM...")) {
+            open_rom_file_dialog();
+        }
+        ImGui::SameLine();
         if (ImGui::Button("⬇ Descargar caratulas faltantes")) {
             size_t count = 0;
             for (const auto& entry : library_.entries()) {
@@ -296,27 +325,24 @@ void StudioApp::render_library() {
     // --- Shelves ----------------------------------------------------------
     struct Shelf {
         const char* title;
+        const char* badge_label;
+        const char* platform_key;
         std::vector<std::string> keys;
     };
     const Shelf shelves[] = {
-        {"Nintendo Entertainment System", {"nes"}},
-        {"Super Nintendo", {"snes"}},
-        {"Game Boy / Game Boy Color", {"gb", "gbc"}},
-        {"Game Boy Advance", {"gba"}},
+        {"Nintendo Entertainment System", "NES", "nes", {"nes"}},
+        {"Super Nintendo", "SNES", "snes", {"snes"}},
+        {"Game Boy / Game Boy Color", "GB/GBC", "gb", {"gb", "gbc"}},
+        {"Game Boy Advance", "GBA", "gba", {"gba"}},
     };
 
     const ImVec2 card_size(132.f, 176.f);
-    bool any = false;
     for (const auto& shelf : shelves) {
         std::vector<const GameEntry*> items;
         for (const auto& k : shelf.keys) {
             const auto part = library_.shelf(k);
             items.insert(items.end(), part.begin(), part.end());
         }
-        if (items.empty()) {
-            continue;
-        }
-        any = true;
         std::sort(items.begin(), items.end(), [](const GameEntry* a, const GameEntry* b) {
             return a->title < b->title;
         });
@@ -325,11 +351,13 @@ void StudioApp::render_library() {
         ImGui::TextColored(ThemeColors::TextPrimary, "%s", shelf.title);
         ImGui::PopFont();
         ImGui::SameLine(0, 8.f);
-        ImGui::TextColored(ThemeColors::TextMuted, "%zu", items.size());
+        ImGui::TextColored(ThemeColors::TextMuted, "(%zu juegos)", items.size());
 
         ImGui::PushID(shelf.title);
         ImGui::BeginChild("row", ImVec2(0, card_size.y + 26.f), false,
                           ImGuiWindowFlags_HorizontalScrollbar);
+
+        // 1. Render all game cards on this shelf
         for (size_t i = 0; i < items.size(); ++i) {
             if (i > 0) {
                 ImGui::SameLine(0, 12.f);
@@ -355,14 +383,36 @@ void StudioApp::render_library() {
                 reset_sha = items[i]->sha1;
             }
         }
+
+        // 2. Render "+ Añadir" slot card
+        if (!items.empty()) {
+            ImGui::SameLine(0, 12.f);
+        }
+        ImGui::PushID("add_slot");
+        if (ImGui::InvisibleButton("##add_btn", card_size)) {
+            open_rom_file_dialog();
+        }
+        const bool hov = ImGui::IsItemHovered();
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        const ImVec2 p0 = ImGui::GetItemRectMin();
+        const ImVec2 p1 = ImGui::GetItemRectMax();
+        const ImVec4 base = platform_color(shelf.platform_key);
+        dl->AddRectFilled(p0, p1, hov ? IM_COL32(32, 40, 52, 240) : IM_COL32(20, 24, 32, 200), 8.f);
+        dl->AddRect(p0, p1, hov ? ImGui::GetColorU32(ThemeColors::AccentCyan) : scaled(base, 0.45f), 8.f, 0, hov ? 2.f : 1.f);
+
+        const char* add_text = "+ Anadir";
+        const ImVec2 add_sz = ImGui::CalcTextSize(add_text);
+        dl->AddText(ImVec2(p0.x + (card_size.x - add_sz.x) * 0.5f, p0.y + card_size.y * 0.38f),
+                    hov ? ImGui::GetColorU32(ThemeColors::AccentCyan) : ImGui::GetColorU32(ThemeColors::TextMuted),
+                    add_text);
+        const ImVec2 hint_sz = ImGui::CalcTextSize(shelf.badge_label);
+        dl->AddText(ImVec2(p0.x + (card_size.x - hint_sz.x) * 0.5f, p0.y + card_size.y * 0.38f + add_sz.y + 4.f),
+                    scaled(base, 0.9f), shelf.badge_label);
+        ImGui::PopID();
+
         ImGui::EndChild();
         ImGui::PopID();
         ImGui::Spacing();
-    }
-
-    if (!any) {
-        ImGui::TextColored(ThemeColors::TextMuted,
-                           "Tu biblioteca esta vacia. Abre una ROM para anadirla.");
     }
 
     ImGui::EndChild();

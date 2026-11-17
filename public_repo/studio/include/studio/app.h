@@ -7,6 +7,7 @@
 
 #include <SDL3/SDL.h>
 
+#include "studio/cover_manager.h"
 #include "studio/library.h"
 #include "studio/packager.h"
 #include "studio/pipeline.h"
@@ -27,6 +28,8 @@ public:
     void load_rom(const std::filesystem::path& rom_path);
     void queue_load_rom(const std::filesystem::path& rom_path);
     void open_rom_file_dialog();
+    void open_cover_file_dialog(const std::string& sha1);
+    void queue_assign_cover(const std::string& sha1, const std::filesystem::path& cover_path);
     void set_export_directory(const std::string& path);
 
 private:
@@ -54,6 +57,7 @@ private:
 
     // Persistent game library (shelves view) and bookkeeping for mode/playtime.
     GameLibrary library_{GameLibrary::default_path()};
+    CoverManager cover_mgr_;
     PipelineStage prev_stage_ = PipelineStage::Idle;
     bool was_game_running_ = false;
     int64_t game_start_unix_ = 0;
@@ -86,6 +90,10 @@ private:
     // Asynchronous file dialog queue
     std::mutex pending_rom_mutex_;
     std::filesystem::path pending_rom_to_load_;
+
+    // Asynchronous cover dialog/download queue
+    std::mutex pending_cover_mutex_;
+    std::vector<std::pair<std::string, std::filesystem::path>> pending_covers_to_assign_;
 };
 
 }  // namespace dragon::studio

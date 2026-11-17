@@ -43,6 +43,12 @@ target_link_libraries(studio_lib PUBLIC
 
 add_executable(dragon-studio src/main.cpp)
 target_link_libraries(dragon-studio PRIVATE studio_lib dragon_warnings)
+if(WIN32)
+  set_target_properties(dragon-studio PROPERTIES WIN32_EXECUTABLE TRUE)
+  if(MINGW)
+    target_link_options(dragon-studio PRIVATE -mwindows)
+  endif()
+endif()
 
 add_custom_target(studio_assets ALL
   COMMAND ${CMAKE_COMMAND} -E copy_directory

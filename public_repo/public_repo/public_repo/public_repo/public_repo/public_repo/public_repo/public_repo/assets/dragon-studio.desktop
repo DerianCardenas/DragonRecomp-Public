@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=DragonRecomp Studio
+GenericName=NES & SNES Static Recompiler
+Comment=Drag & Drop static recompilation of NES and SNES ROMs to native Linux ELFs
+Exec=/home/derian/Documentos/Proyectos/Derian/DragonRecomp/build/studio/dragon-studio
+Icon=dragon-studio
+Path=/home/derian/Documentos/Proyectos/Derian/DragonRecomp
+Terminal=false
+StartupNotify=true
+Categories=Game;Emulator;
+Keywords=NES;SNES;Recompiler;Dragon;Emulator;Gaming;
+MimeType=application/x-nes-rom;application/x-snes-rom;

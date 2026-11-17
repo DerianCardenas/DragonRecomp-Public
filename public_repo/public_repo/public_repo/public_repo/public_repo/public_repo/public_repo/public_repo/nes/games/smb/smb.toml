@@ -1,0 +1,33 @@
+# Super Mario Bros. (NES, NROM / mapper 0)
+# Schema: docs/SPEC.md §5.
+
+jump_engine = [0x8E04]
+
+[game]
+name     = "Super Mario Bros."
+platform = "nes"
+rom      = "../../../roms/nes/smb.nes"
+sha1     = "ea343f4e445a9050d4b4fbac2c77d0693b1d0922"
+mapper   = 0
+
+[output]
+dir         = "generated"
+split_every = 200
+
+# JumpEngine at $8E04 consumes inline word tables following each `JSR $8E04`.
+[[inline_data_calls]]
+target = 0x8E04
+kind   = "jump_engine"
+
+# Data tables immediately following unconditional-in-practice BNEs or unused IRQ vector ($FFF0).
+[[data_ranges]]
+start = 0xD965
+end   = 0xD967
+
+[[data_ranges]]
+start = 0xF3B1
+end   = 0xF3B7
+
+[[data_ranges]]
+start = 0xFFF0
+end   = 0xFFF9

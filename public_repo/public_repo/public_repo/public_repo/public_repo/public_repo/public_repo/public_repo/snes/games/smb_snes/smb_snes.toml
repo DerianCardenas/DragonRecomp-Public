@@ -1,0 +1,70 @@
+# Super Mario Bros. SNES (HiROM, 4 MiB)
+# Schema: docs/SPEC.md §5, docs/SNES_SPEC.md §5.
+
+jump_engine = [0x8E04]
+
+# Objetivos de despacho con truco de pila (RAM-resident). Un RTS dentro de
+# runtime_dispatch que apunte aquí NO debe terminar el bucle de despacho.
+# Reemplaza el antiguo 0x0884 hardcodeado en el runtime (ADR-002).
+stack_tricks = [0x0884]
+
+[game]
+name     = "Super Mario Bros. (SNES)"
+platform = "snes"
+rom      = "../../../roms/snes/smb_snes.sfc"
+sha1     = "d685be2360730c97e4b57406e62b13919cbada58"
+map      = "hirom"
+
+[output]
+dir         = "generated"
+split_every = 200
+
+[[entry_points]]
+addr = 0xFFB0
+bank = 0x00
+name = "Reset_Boot"
+
+[[entry_points]]
+addr = 0xC000
+bank = 0xFF
+name = "Reset_FFC000"
+
+[[entry_points]]
+addr = 0xF000
+bank = 0x00
+name = "NMI_Handler"
+
+[[entry_points]]
+addr = 0xFE00
+bank = 0x00
+name = "IRQ_Handler"
+
+[[entry_points]]
+addr = 0x800D
+bank = 0xA0
+name = "Boot_Init"
+
+[[entry_points]]
+addr = 0x8000
+bank = 0xA1
+name = "Game_Reset_Loop"
+
+[[entry_points]]
+addr = 0x8082
+bank = 0xA1
+name = "Game_NMI_Body"
+
+[[entry_points]]
+addr = 0x8118
+bank = 0xA2
+name = "OAM_Copy_A2"
+
+[[mx_hints]]
+addr = 0xA2FB1B
+m = 1
+x = 0
+
+[[entry_points]]
+addr = 0xFB1B
+bank = 0xA2
+name = "RTL_Helper_A2_FB1B"
