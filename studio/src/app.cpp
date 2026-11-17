@@ -30,6 +30,21 @@ void SDLCALL on_export_folder_picked(void* userdata, const char* const* filelist
     }
 }
 
+struct CoverDialogPayload {
+    StudioApp* app;
+    std::string sha1;
+};
+
+void SDLCALL on_cover_file_picked(void* userdata, const char* const* filelist, int /*filter*/) {
+    auto* payload = static_cast<CoverDialogPayload*>(userdata);
+    if (payload) {
+        if (payload->app && filelist && *filelist) {
+            payload->app->queue_assign_cover(payload->sha1, *filelist);
+        }
+        delete payload;
+    }
+}
+
 void open_folder_in_file_manager(const std::filesystem::path& folder) {
     if (std::filesystem::exists(folder)) {
 #if defined(_WIN32)
@@ -136,6 +151,15 @@ void StudioApp::load_rom(const std::filesystem::path& rom_path) {
         diagnostic_status_message_.clear();
         pipeline_.clear_last_game_error();
         pipeline_.start_pipeline(info);
+
+        const GameEntry* entry = library_.find(info.sha1);
+        if (entry && entry->cover_path.empty()) {
+            cover_mgr_.download_cover_async(*entry, [this, sha1 = entry->sha1](bool ok, const std::filesystem::path& path) {
+                if (ok) {
+                    queue_assign_cover(sha1, path);
+                }
+            });
+        }
     }
 }
 
@@ -156,6 +180,20 @@ void StudioApp::open_rom_file_dialog() {
     SDL_ShowOpenFileDialog(&on_rom_file_picked, this, window_, kRomFilters, 6, nullptr, false);
 }
 
+void StudioApp::open_cover_file_dialog(const std::string& sha1) {
+    static const SDL_DialogFileFilter kCoverFilters[] = {
+        {"Imagenes de caratula (*.png, *.jpg, *.jpeg, *.bmp, *.webp)",
+         "png;jpg;jpeg;bmp;webp"},
+        {"Todos los archivos", "*"}};
+    auto* payload = new CoverDialogPayload{this, sha1};
+    SDL_ShowOpenFileDialog(&on_cover_file_picked, payload, window_, kCoverFilters, 2, nullptr, false);
+}
+
+void StudioApp::queue_assign_cover(const std::string& sha1, const std::filesystem::path& cover_path) {
+    std::lock_guard<std::mutex> lock(pending_cover_mutex_);
+    pending_covers_to_assign_.emplace_back(sha1, cover_path);
+}
+
 void StudioApp::process_events() {
     std::filesystem::path pending;
     {
@@ -169,6 +207,26 @@ void StudioApp::process_events() {
         load_rom(pending);
     }
 
+    std::vector<std::pair<std::string, std::filesystem::path>> pending_covers;
+    {
+        std::lock_guard<std::mutex> lock(pending_cover_mutex_);
+        if (!pending_covers_to_assign_.empty()) {
+            pending_covers.swap(pending_covers_to_assign_);
+        }
+    }
+    for (const auto& [sha1, path] : pending_covers) {
+        std::filesystem::path assigned = path;
+        if (path.parent_path() != CoverManager::covers_dir()) {
+            assigned = cover_mgr_.assign_manual_cover(sha1, path);
+        } else {
+            cover_mgr_.invalidate(sha1);
+        }
+        if (!assigned.empty()) {
+            library_.set_cover(sha1, assigned);
+            library_.save();
+        }
+    }
+
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         ImGui_ImplSDL3_ProcessEvent(&event);
@@ -180,7 +238,24 @@ void StudioApp::process_events() {
             running_ = false;
         } else if (event.type == SDL_EVENT_DROP_FILE) {
             if (event.drop.data) {
-                load_rom(event.drop.data);
+                const std::filesystem::path dropped = event.drop.data;
+                if (CoverManager::is_image_file(dropped)) {
+                    std::string target_sha;
+                    if (active_rom_.is_valid()) {
+                        target_sha = active_rom_.sha1;
+                    } else if (const GameEntry* last = library_.last_played()) {
+                        target_sha = last->sha1;
+                    }
+                    if (!target_sha.empty()) {
+                        const auto assigned = cover_mgr_.assign_manual_cover(target_sha, dropped);
+                        if (!assigned.empty()) {
+                            library_.set_cover(target_sha, assigned);
+                            library_.save();
+                        }
+                    }
+                } else {
+                    load_rom(dropped);
+                }
             }
         }
     }
@@ -373,6 +448,19 @@ void StudioApp::render_rom_card() {
     ImGui::SetColumnWidth(2, std::max(180.0f, total_w * 0.20f));
 
     // Col 1: Title and Platform
+    const GameEntry* entry = library_.find(active_rom_.sha1);
+    const std::filesystem::path cover_path = entry ? entry->cover_path : std::filesystem::path{};
+    SDL_Texture* cover_tex = cover_mgr_.get_texture(renderer_, active_rom_.sha1, cover_path);
+    if (cover_tex) {
+        const ImVec2 p = ImGui::GetCursorScreenPos();
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        dl->AddImageRounded((ImTextureID)(intptr_t)cover_tex, p, ImVec2(p.x + 64.f, p.y + 86.f),
+                            ImVec2(0, 0), ImVec2(1, 1), IM_COL32_WHITE, 4.f);
+        ImGui::Dummy(ImVec2(68.f, 86.f));
+        ImGui::SameLine();
+        ImGui::BeginGroup();
+    }
+
     ImGui::PushFont(fonts_.small);
     ImGui::TextColored(ThemeColors::TextMuted, "TITULO DE LA ROM");
     ImGui::PopFont();
@@ -384,6 +472,10 @@ void StudioApp::render_rom_card() {
     ImGui::TextColored(ThemeColors::TextMuted, "PLATAFORMA:");
     ImGui::SameLine();
     ImGui::TextColored(ThemeColors::AccentCyan, "%s", active_rom_.platform_name().c_str());
+
+    if (cover_tex) {
+        ImGui::EndGroup();
+    }
 
     ImGui::NextColumn();
 

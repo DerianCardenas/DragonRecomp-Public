@@ -2,6 +2,8 @@
 
 **Convierte tus juegos clásicos de NES, SNES, Game Boy / Game Boy Color y Game Boy Advance en juegos nativos para PC.**
 
+[![Descargar DragonRecomp Studio](https://img.shields.io/badge/Descargar%20Studio%20v1.0.0-Windows%20x64%20(Portable)-00b4d8?style=for-the-badge&logo=windows)](https://github.com/DerianCardenas/DragonRecomp-Public/releases/latest)
+
 DragonRecomp es una herramienta que toma tus juegos favoritos de **NES (Nintendo Entertainment System)**, **Super Nintendo (SNES)**, **Game Boy / Game Boy Color (DMG / CGB)** y **Game Boy Advance (GBA)** y los recompila en programas nativos para **Windows** (`.exe`) y **Linux**, con rendimiento perfecto a 60 FPS, respuesta instantánea en los controles y sin la pesadez de los emuladores tradicionales.
 
 ---

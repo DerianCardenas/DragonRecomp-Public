@@ -1,0 +1,50 @@
+# DragonRecomp Global Knowledge Base — Game Boy Advance (ARM7TDMI)
+# Base de conocimientos compartida para todas las ROMs de GBA.
+# Documenta los patrones de llamadas multi-compilador (agbcc, devkitARM, ADS,
+# Metrowerks), interworking ARM/Thumb, BIOS HLE y código en IWRAM.
+
+[platform]
+name = "GBA"
+cpu  = "ARM7TDMI (ARMv4T)"
+apu  = "DirectSound Dual FIFO + 4-Channel PSG"
+ppu  = "GBA 240x160 (Modes 0-5, Affine, 128 OAM)"
+
+[[rules]]
+id = "arm_thumb_interworking_and_veneers"
+description = "Resolución estática de veneers LDR Rd, [PC, #imm]; BX Rd y ADD Rd, PC, #imm; BX Rd, propagando el bit 0 del literal pool (1 = Thumb, 0 = ARM) y sincronizando cpu->thumb y CPSR.T en gba_runtime_dispatch."
+interworking_bit0_sync = true
+
+[[rules]]
+id = "libgcc_agbcc_call_via_rx_thunks"
+description = "Los compiladores agbcc/GCC emiten BL _call_via_rX donde el stub ejecuta únicamente BX rX y el destino retorna directamente al llamador original con BX LR. El emisor verifica (cpu->r[15] & ~1U) != next_pc tras cada BL para redirigir a dispatch_pc o retornar sin corromper la pila C."
+call_via_rx_support = true
+
+[[rules]]
+id = "gnu_thumb1_case_inline_switch_helpers"
+description = "Los 5 helpers de switch de GCC en Thumb (__gnu_thumb1_case_uqi, sqi, uhi, shi, si) leen tablas de offsets de 8/16/32 bits incrustadas inmediatamente después del BL y saltan dentro de la función llamadora. El desensamblador decodifica las tablas inline y el emisor salta a goto dispatch_pc tras el BL."
+gnu_thumb1_case_helpers = ["uqi", "sqi", "uhi", "shi", "si"]
+
+[[rules]]
+id = "agbcc_thumb_pop_r3_bx_r3_epilogue"
+description = "En ARMv4T, POP {PC} en Thumb no cambia el bit T de CPSR, por lo que agbcc emite POP {R3}; BX R3 (o R0..R2) como epílogo de función. Debe tratarse como retorno de subrutina."
+thumb_pop_bx_epilogue = true
+
+[[rules]]
+id = "iwram_ewram_runtime_code_execution"
+description = "Rutinas críticas copiadas en tiempo de ejecución a IWRAM ($03000000, ej. SoundMainRAM de m4a, descompresión, rutinas Flash) o EWRAM ($02000000) se ejecutan en el intérprete ARM/Thumb hasta volver a ROM sin ensuciar fallback.log."
+ram_code_interpreter = true
+
+[[rules]]
+id = "bios_irq_vector_03007ffc"
+description = "El despachador de interrupciones de BIOS salta en modo ARM a la dirección almacenada en [$03007FFC] (espejada en [$03FFFFFC]) con LR = $00000138, restaurando R0-R3, R12, LR y SPSR_irq al retornar."
+irq_handler_ptr = 0x03007FFC
+
+[[rules]]
+id = "cart_gpio_rtc_seiko_s3511a"
+description = "Emulación de los puertos de I/O de cartucho en $080000C4..$080000C8 (GPIO_DATA, GPIO_DIR, GPIO_CNT) y chip de reloj en tiempo real Seiko S-3511A (3 hilos seriales: SCK, CS, SIO) con registros BCD sincronizados al reloj host, requerido por Pokémon Rubí/Zafiro/Esmeralda y Boktai."
+cart_rtc_s3511a = true
+
+[[rules]]
+id = "interpreter_fallback_complex_audio_loopers"
+description = "Juegos con cadenas recursivas o bucles sin retorno en mixers de sonido m4a o controladores de eventos complejos (e.g. Pokémon Esmeralda y Pokémon Mundo Misterioso: Equipo de Rescate Rojo) se configuran automáticamente en modo intérprete para garantizar 60 FPS estables sin bloqueos ni desbordamiento de pila C host."
+complex_callchains_interpreter_fallback = true

@@ -22,8 +22,13 @@ add_library(studio_lib STATIC
   src/rom_detector.cpp
   src/pipeline.cpp
   src/packager.cpp
+  src/library.cpp
   src/theme.cpp
   src/app.cpp)
+
+# toml++ is used privately by the game library (library.toml persistence).
+target_include_directories(studio_lib SYSTEM PRIVATE
+  ${CMAKE_SOURCE_DIR}/third_party/tomlplusplus)
 
 target_include_directories(studio_lib PUBLIC
   include
@@ -62,5 +67,10 @@ if(DRAGON_BUILD_TESTS)
   add_executable(studio_unit_tests tests/studio_unit_tests.cpp)
   target_link_libraries(studio_unit_tests PRIVATE studio_lib dragon_warnings)
   add_test(NAME studio_unit_tests COMMAND studio_unit_tests
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_executable(studio_library_tests tests/library_tests.cpp)
+  target_link_libraries(studio_library_tests PRIVATE studio_lib dragon_warnings)
+  add_test(NAME studio_library_tests COMMAND studio_library_tests
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()
