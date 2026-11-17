@@ -23,6 +23,7 @@ add_library(studio_lib STATIC
   src/pipeline.cpp
   src/packager.cpp
   src/library.cpp
+  src/library_view.cpp
   src/theme.cpp
   src/app.cpp)
 

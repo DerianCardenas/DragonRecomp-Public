@@ -143,6 +143,7 @@ void StudioApp::load_rom(const std::filesystem::path& rom_path) {
     RomInfo info = detect_rom(rom_path);
     if (info.is_valid()) {
         active_rom_ = info;
+        current_view_ = StudioView::Recompiler;
         library_.add_rom(info);
         library_.save();
         show_package_modal_ = false;
@@ -299,6 +300,46 @@ void StudioApp::render_header() {
     ImGui::TextColored(ThemeColors::AccentCyan, "DRAGONRECOMP");
     ImGui::SameLine(0, 10.0f);
     ImGui::TextColored(ThemeColors::TextPrimary, "STUDIO");
+    ImGui::PopFont();
+
+    // Navigation Tabs in Header
+    ImGui::SetCursorScreenPos(ImVec2(p0.x + 310.0f, p0.y + (header_h - 36.0f) * 0.5f));
+    ImGui::PushFont(fonts_.body_bold);
+
+    const bool is_lib = (current_view_ == StudioView::Library);
+    if (is_lib) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ThemeColors::AccentCyan);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.06f, 0.08f, 0.10f, 1.0f));
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Button, ThemeColors::SurfaceAlt);
+        ImGui::PushStyleColor(ImGuiCol_Text, ThemeColors::TextMuted);
+    }
+    if (ImGui::Button("📚 Mi Biblioteca", ImVec2(150.0f, 36.0f))) {
+        current_view_ = StudioView::Library;
+    }
+    ImGui::PopStyleColor(2);
+
+    ImGui::SameLine(0, 10.0f);
+
+    const bool is_rec = (current_view_ == StudioView::Recompiler);
+    if (is_rec) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ThemeColors::AccentCyan);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.06f, 0.08f, 0.10f, 1.0f));
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Button, ThemeColors::SurfaceAlt);
+        ImGui::PushStyleColor(ImGuiCol_Text, ThemeColors::TextMuted);
+    }
+    std::string rec_tab = "⚡ Recompilador";
+    if (active_rom_.is_valid()) {
+        rec_tab = "⚡ " + active_rom_.clean_name;
+        if (rec_tab.size() > 22) {
+            rec_tab = rec_tab.substr(0, 19) + "...";
+        }
+    }
+    if (ImGui::Button(rec_tab.c_str(), ImVec2(180.0f, 36.0f))) {
+        current_view_ = StudioView::Recompiler;
+    }
+    ImGui::PopStyleColor(2);
     ImGui::PopFont();
 
     // System-status pill, right-aligned.
@@ -516,6 +557,10 @@ void StudioApp::render_rom_card() {
 
     // Col 4: Action buttons
     ImGui::Dummy(ImVec2(0, 4.0f));
+    if (ImGui::Button("📚 Ver Biblioteca", ImVec2(-1, 38.0f))) {
+        current_view_ = StudioView::Library;
+    }
+    ImGui::Spacing();
     if (ImGui::Button("Abrir otra ROM", ImVec2(-1, 38.0f))) {
         open_rom_file_dialog();
     }
@@ -1138,32 +1183,32 @@ void StudioApp::render_ui() {
     render_header();
     track_library_state();
 
-    if (!active_rom_.is_valid()) {
-        if (library_.entries().empty()) {
+    if (current_view_ == StudioView::Library) {
+        render_library();
+    } else {
+        if (!active_rom_.is_valid()) {
             render_drop_zone();
         } else {
-            render_library();
-        }
-    } else {
-        render_rom_card();
-        ImGui::Spacing();
+            render_rom_card();
+            ImGui::Spacing();
 
-        switch (pipeline_.stage()) {
-            case PipelineStage::Idle:
-                // Auto starts pipeline on load
-                break;
-            case PipelineStage::Analyzing:
-            case PipelineStage::Disassembling:
-            case PipelineStage::Emitting:
-            case PipelineStage::CompilingNative:
-                render_pipeline_progress();
-                break;
-            case PipelineStage::Ready:
-                render_ready_hub();
-                break;
-            case PipelineStage::Failed:
-                render_error_view();
-                break;
+            switch (pipeline_.stage()) {
+                case PipelineStage::Idle:
+                    // Auto starts pipeline on load
+                    break;
+                case PipelineStage::Analyzing:
+                case PipelineStage::Disassembling:
+                case PipelineStage::Emitting:
+                case PipelineStage::CompilingNative:
+                    render_pipeline_progress();
+                    break;
+                case PipelineStage::Ready:
+                    render_ready_hub();
+                    break;
+                case PipelineStage::Failed:
+                    render_error_view();
+                    break;
+            }
         }
     }
 

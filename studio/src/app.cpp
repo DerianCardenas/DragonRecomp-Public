@@ -30,21 +30,6 @@ void SDLCALL on_export_folder_picked(void* userdata, const char* const* filelist
     }
 }
 
-struct CoverDialogPayload {
-    StudioApp* app;
-    std::string sha1;
-};
-
-void SDLCALL on_cover_file_picked(void* userdata, const char* const* filelist, int /*filter*/) {
-    auto* payload = static_cast<CoverDialogPayload*>(userdata);
-    if (payload) {
-        if (payload->app && filelist && *filelist) {
-            payload->app->queue_assign_cover(payload->sha1, *filelist);
-        }
-        delete payload;
-    }
-}
-
 void open_folder_in_file_manager(const std::filesystem::path& folder) {
     if (std::filesystem::exists(folder)) {
 #if defined(_WIN32)
@@ -111,7 +96,6 @@ bool StudioApp::init(int width, int height) {
     export_dir_buf_[sizeof(export_dir_buf_) - 1] = '\0';
 
     running_ = true;
-    library_.load();
     return true;
 }
 
@@ -143,24 +127,12 @@ void StudioApp::load_rom(const std::filesystem::path& rom_path) {
     RomInfo info = detect_rom(rom_path);
     if (info.is_valid()) {
         active_rom_ = info;
-        current_view_ = StudioView::Recompiler;
-        library_.add_rom(info);
-        library_.save();
         show_package_modal_ = false;
         export_status_message_.clear();
         last_package_result_ = PackageResult{};
         diagnostic_status_message_.clear();
         pipeline_.clear_last_game_error();
         pipeline_.start_pipeline(info);
-
-        const GameEntry* entry = library_.find(info.sha1);
-        if (entry && entry->cover_path.empty()) {
-            cover_mgr_.download_cover_async(*entry, [this, sha1 = entry->sha1](bool ok, const std::filesystem::path& path) {
-                if (ok) {
-                    queue_assign_cover(sha1, path);
-                }
-            });
-        }
     }
 }
 
@@ -181,20 +153,6 @@ void StudioApp::open_rom_file_dialog() {
     SDL_ShowOpenFileDialog(&on_rom_file_picked, this, window_, kRomFilters, 6, nullptr, false);
 }
 
-void StudioApp::open_cover_file_dialog(const std::string& sha1) {
-    static const SDL_DialogFileFilter kCoverFilters[] = {
-        {"Imagenes de caratula (*.png, *.jpg, *.jpeg, *.bmp, *.webp)",
-         "png;jpg;jpeg;bmp;webp"},
-        {"Todos los archivos", "*"}};
-    auto* payload = new CoverDialogPayload{this, sha1};
-    SDL_ShowOpenFileDialog(&on_cover_file_picked, payload, window_, kCoverFilters, 2, nullptr, false);
-}
-
-void StudioApp::queue_assign_cover(const std::string& sha1, const std::filesystem::path& cover_path) {
-    std::lock_guard<std::mutex> lock(pending_cover_mutex_);
-    pending_covers_to_assign_.emplace_back(sha1, cover_path);
-}
-
 void StudioApp::process_events() {
     std::filesystem::path pending;
     {
@@ -208,26 +166,6 @@ void StudioApp::process_events() {
         load_rom(pending);
     }
 
-    std::vector<std::pair<std::string, std::filesystem::path>> pending_covers;
-    {
-        std::lock_guard<std::mutex> lock(pending_cover_mutex_);
-        if (!pending_covers_to_assign_.empty()) {
-            pending_covers.swap(pending_covers_to_assign_);
-        }
-    }
-    for (const auto& [sha1, path] : pending_covers) {
-        std::filesystem::path assigned = path;
-        if (path.parent_path() != CoverManager::covers_dir()) {
-            assigned = cover_mgr_.assign_manual_cover(sha1, path);
-        } else {
-            cover_mgr_.invalidate(sha1);
-        }
-        if (!assigned.empty()) {
-            library_.set_cover(sha1, assigned);
-            library_.save();
-        }
-    }
-
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         ImGui_ImplSDL3_ProcessEvent(&event);
@@ -239,24 +177,7 @@ void StudioApp::process_events() {
             running_ = false;
         } else if (event.type == SDL_EVENT_DROP_FILE) {
             if (event.drop.data) {
-                const std::filesystem::path dropped = event.drop.data;
-                if (CoverManager::is_image_file(dropped)) {
-                    std::string target_sha;
-                    if (active_rom_.is_valid()) {
-                        target_sha = active_rom_.sha1;
-                    } else if (const GameEntry* last = library_.last_played()) {
-                        target_sha = last->sha1;
-                    }
-                    if (!target_sha.empty()) {
-                        const auto assigned = cover_mgr_.assign_manual_cover(target_sha, dropped);
-                        if (!assigned.empty()) {
-                            library_.set_cover(target_sha, assigned);
-                            library_.save();
-                        }
-                    }
-                } else {
-                    load_rom(dropped);
-                }
+                load_rom(event.drop.data);
             }
         }
     }
@@ -300,46 +221,6 @@ void StudioApp::render_header() {
     ImGui::TextColored(ThemeColors::AccentCyan, "DRAGONRECOMP");
     ImGui::SameLine(0, 10.0f);
     ImGui::TextColored(ThemeColors::TextPrimary, "STUDIO");
-    ImGui::PopFont();
-
-    // Navigation Tabs in Header
-    ImGui::SetCursorScreenPos(ImVec2(p0.x + 310.0f, p0.y + (header_h - 36.0f) * 0.5f));
-    ImGui::PushFont(fonts_.body_bold);
-
-    const bool is_lib = (current_view_ == StudioView::Library);
-    if (is_lib) {
-        ImGui::PushStyleColor(ImGuiCol_Button, ThemeColors::AccentCyan);
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.06f, 0.08f, 0.10f, 1.0f));
-    } else {
-        ImGui::PushStyleColor(ImGuiCol_Button, ThemeColors::SurfaceAlt);
-        ImGui::PushStyleColor(ImGuiCol_Text, ThemeColors::TextMuted);
-    }
-    if (ImGui::Button("📚 Mi Biblioteca", ImVec2(150.0f, 36.0f))) {
-        current_view_ = StudioView::Library;
-    }
-    ImGui::PopStyleColor(2);
-
-    ImGui::SameLine(0, 10.0f);
-
-    const bool is_rec = (current_view_ == StudioView::Recompiler);
-    if (is_rec) {
-        ImGui::PushStyleColor(ImGuiCol_Button, ThemeColors::AccentCyan);
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.06f, 0.08f, 0.10f, 1.0f));
-    } else {
-        ImGui::PushStyleColor(ImGuiCol_Button, ThemeColors::SurfaceAlt);
-        ImGui::PushStyleColor(ImGuiCol_Text, ThemeColors::TextMuted);
-    }
-    std::string rec_tab = "⚡ Recompilador";
-    if (active_rom_.is_valid()) {
-        rec_tab = "⚡ " + active_rom_.clean_name;
-        if (rec_tab.size() > 22) {
-            rec_tab = rec_tab.substr(0, 19) + "...";
-        }
-    }
-    if (ImGui::Button(rec_tab.c_str(), ImVec2(180.0f, 36.0f))) {
-        current_view_ = StudioView::Recompiler;
-    }
-    ImGui::PopStyleColor(2);
     ImGui::PopFont();
 
     // System-status pill, right-aligned.
@@ -489,19 +370,6 @@ void StudioApp::render_rom_card() {
     ImGui::SetColumnWidth(2, std::max(180.0f, total_w * 0.20f));
 
     // Col 1: Title and Platform
-    const GameEntry* entry = library_.find(active_rom_.sha1);
-    const std::filesystem::path cover_path = entry ? entry->cover_path : std::filesystem::path{};
-    SDL_Texture* cover_tex = cover_mgr_.get_texture(renderer_, active_rom_.sha1, cover_path);
-    if (cover_tex) {
-        const ImVec2 p = ImGui::GetCursorScreenPos();
-        ImDrawList* dl = ImGui::GetWindowDrawList();
-        dl->AddImageRounded((ImTextureID)(intptr_t)cover_tex, p, ImVec2(p.x + 64.f, p.y + 86.f),
-                            ImVec2(0, 0), ImVec2(1, 1), IM_COL32_WHITE, 4.f);
-        ImGui::Dummy(ImVec2(68.f, 86.f));
-        ImGui::SameLine();
-        ImGui::BeginGroup();
-    }
-
     ImGui::PushFont(fonts_.small);
     ImGui::TextColored(ThemeColors::TextMuted, "TITULO DE LA ROM");
     ImGui::PopFont();
@@ -513,10 +381,6 @@ void StudioApp::render_rom_card() {
     ImGui::TextColored(ThemeColors::TextMuted, "PLATAFORMA:");
     ImGui::SameLine();
     ImGui::TextColored(ThemeColors::AccentCyan, "%s", active_rom_.platform_name().c_str());
-
-    if (cover_tex) {
-        ImGui::EndGroup();
-    }
 
     ImGui::NextColumn();
 
@@ -557,10 +421,6 @@ void StudioApp::render_rom_card() {
 
     // Col 4: Action buttons
     ImGui::Dummy(ImVec2(0, 4.0f));
-    if (ImGui::Button("📚 Ver Biblioteca", ImVec2(-1, 38.0f))) {
-        current_view_ = StudioView::Library;
-    }
-    ImGui::Spacing();
     if (ImGui::Button("Abrir otra ROM", ImVec2(-1, 38.0f))) {
         open_rom_file_dialog();
     }
@@ -1181,34 +1041,29 @@ void StudioApp::render_ui() {
     ImGui::PopStyleVar(2);
 
     render_header();
-    track_library_state();
 
-    if (current_view_ == StudioView::Library) {
-        render_library();
+    if (!active_rom_.is_valid()) {
+        render_drop_zone();
     } else {
-        if (!active_rom_.is_valid()) {
-            render_drop_zone();
-        } else {
-            render_rom_card();
-            ImGui::Spacing();
+        render_rom_card();
+        ImGui::Spacing();
 
-            switch (pipeline_.stage()) {
-                case PipelineStage::Idle:
-                    // Auto starts pipeline on load
-                    break;
-                case PipelineStage::Analyzing:
-                case PipelineStage::Disassembling:
-                case PipelineStage::Emitting:
-                case PipelineStage::CompilingNative:
-                    render_pipeline_progress();
-                    break;
-                case PipelineStage::Ready:
-                    render_ready_hub();
-                    break;
-                case PipelineStage::Failed:
-                    render_error_view();
-                    break;
-            }
+        switch (pipeline_.stage()) {
+            case PipelineStage::Idle:
+                // Auto starts pipeline on load
+                break;
+            case PipelineStage::Analyzing:
+            case PipelineStage::Disassembling:
+            case PipelineStage::Emitting:
+            case PipelineStage::CompilingNative:
+                render_pipeline_progress();
+                break;
+            case PipelineStage::Ready:
+                render_ready_hub();
+                break;
+            case PipelineStage::Failed:
+                render_error_view();
+                break;
         }
     }
 

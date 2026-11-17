@@ -1,0 +1,43 @@
+name: e2e-roms
+
+# Local / self-hosted CI (spec 003, ADR-006, "Nivel B"): the ROM-gated E2E
+# tier. Runs ONLY on a self-hosted runner that has the maintainer's own ROM
+# library mounted — never on GitHub-hosted runners, since this workflow
+# requires commercial ROMs that are never committed or downloaded here.
+#
+# This does not replace ci.yml: it does not gate pushes/PRs (manual dispatch
+# only, optionally nightly), and running it is the runner owner's choice, the
+# same way a local `pre-push` hook is optional and bypassable. The shared gate
+# for every committer is ci.yml.
+#
+# Setup on the self-hosted runner:
+#   - Register a runner with the label "dragon-roms".
+#   - Set DRAGON_ROM_DIR (repo or runner Actions secret/variable, or export it
+#     in the runner's own shell profile) to the root of the ROM library.
+#   - DRAGON_REQUIRE_ROMS=1 is set below so a ROM that fails to resolve by
+#     SHA-1 FAILS the job instead of silently skipping (ADR-007): this tier
+#     exists specifically to prove the ROM-gated tests actually run.
+
+on:
+  workflow_dispatch:
+  # Uncomment once a self-hosted runner with label "dragon-roms" is online:
+  # schedule:
+  #   - cron: '0 6 * * *'  # nightly
+
+jobs:
+  e2e-roms:
+    runs-on: [self-hosted, dragon-roms]
+    env:
+      DRAGON_REQUIRE_ROMS: "1"
+      # DRAGON_ROM_DIR: set on the runner itself (not committed here).
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test (ROM-gated tests must run, not skip)
+        run: ctest --test-dir build --output-on-failure

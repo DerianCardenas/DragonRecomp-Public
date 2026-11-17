@@ -22,16 +22,8 @@ add_library(studio_lib STATIC
   src/rom_detector.cpp
   src/pipeline.cpp
   src/packager.cpp
-  src/library.cpp
-  src/library_view.cpp
-  src/cover_manager.cpp
   src/theme.cpp
   src/app.cpp)
-
-# toml++ and stb are used privately by the game library and cover manager.
-target_include_directories(studio_lib SYSTEM PRIVATE
-  ${CMAKE_SOURCE_DIR}/third_party/tomlplusplus
-  ${CMAKE_SOURCE_DIR}/third_party/stb)
 
 target_include_directories(studio_lib PUBLIC
   include
@@ -48,10 +40,6 @@ target_link_libraries(studio_lib PUBLIC
   gba_runtime
   SDL3::SDL3
   dragon_warnings)
-
-if(WIN32)
-  target_link_libraries(studio_lib PUBLIC urlmon wininet)
-endif()
 
 add_executable(dragon-studio src/main.cpp)
 target_link_libraries(dragon-studio PRIVATE studio_lib dragon_warnings)
@@ -74,10 +62,5 @@ if(DRAGON_BUILD_TESTS)
   add_executable(studio_unit_tests tests/studio_unit_tests.cpp)
   target_link_libraries(studio_unit_tests PRIVATE studio_lib dragon_warnings)
   add_test(NAME studio_unit_tests COMMAND studio_unit_tests
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-
-  add_executable(studio_library_tests tests/library_tests.cpp)
-  target_link_libraries(studio_library_tests PRIVATE studio_lib dragon_warnings)
-  add_test(NAME studio_library_tests COMMAND studio_library_tests
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()

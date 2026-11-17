@@ -96,6 +96,7 @@ bool StudioApp::init(int width, int height) {
     export_dir_buf_[sizeof(export_dir_buf_) - 1] = '\0';
 
     running_ = true;
+    library_.load();
     return true;
 }
 
@@ -127,6 +128,8 @@ void StudioApp::load_rom(const std::filesystem::path& rom_path) {
     RomInfo info = detect_rom(rom_path);
     if (info.is_valid()) {
         active_rom_ = info;
+        library_.add_rom(info);
+        library_.save();
         show_package_modal_ = false;
         export_status_message_.clear();
         last_package_result_ = PackageResult{};
@@ -1041,9 +1044,14 @@ void StudioApp::render_ui() {
     ImGui::PopStyleVar(2);
 
     render_header();
+    track_library_state();
 
     if (!active_rom_.is_valid()) {
-        render_drop_zone();
+        if (library_.entries().empty()) {
+            render_drop_zone();
+        } else {
+            render_library();
+        }
     } else {
         render_rom_card();
         ImGui::Spacing();

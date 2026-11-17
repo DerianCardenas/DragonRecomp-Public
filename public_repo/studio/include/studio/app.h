@@ -16,6 +16,11 @@
 
 namespace dragon::studio {
 
+enum class StudioView {
+    Library,
+    Recompiler,
+};
+
 class StudioApp {
 public:
     StudioApp();
@@ -58,6 +63,7 @@ private:
     // Persistent game library (shelves view) and bookkeeping for mode/playtime.
     GameLibrary library_{GameLibrary::default_path()};
     CoverManager cover_mgr_;
+    StudioView current_view_ = StudioView::Library;
     PipelineStage prev_stage_ = PipelineStage::Idle;
     bool was_game_running_ = false;
     int64_t game_start_unix_ = 0;
