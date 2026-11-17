@@ -1,0 +1,18 @@
+# Donkey Kong (NES, NROM-128 / mapper 0)
+# Schema: docs/SPEC.md §5.
+
+[game]
+name     = "Donkey Kong"
+platform = "nes"
+rom      = "../../../roms/nes/dk.nes"
+sha1     = "d8dfacbfec34cdc871d73c901811551fe1706923"
+mapper   = 0
+
+[output]
+dir         = "generated"
+split_every = 200
+
+# Unused IRQ vector padding ($FFF0-$FFF9) before hardware vectors ($FFFA-$FFFF).
+[[data_ranges]]
+start = 0xFFF0
+end   = 0xFFF9
