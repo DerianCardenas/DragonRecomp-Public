@@ -1,0 +1,39 @@
+roms/*
+build/
+*.nes
+*.sfc
+*.smc
+*.gb
+*.gbc
+*.gba
+.cache/
+
+# Build directories
+build*/
+cmake-build-*/
+out/
+compile_commands.json
+
+# Generated recompiler output (derived from ROMs, never commit)
+nes/games/*/generated/
+snes/games/*/generated/
+gb/games/*/generated/
+gba/games/*/generated/
+fallback.log
+ExportedGames/
+.dragon/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+imgui.ini
+
+# Spec 003 (ADR-007/008), E2E Level 1: public, freely-redistributable test
+# ROMs committed under roms/test/ for CI precision tests. Never put a
+# commercial ROM here — allowlist each file explicitly, do not blanket-unignore
+# the directory.
+!roms/test/
+!roms/test/nestest.nes
+!roms/test/nestest.log
