@@ -1,0 +1,30 @@
+# DragonRecomp Global Knowledge Base — Game Boy / Game Boy Color (Sharp SM83)
+# Base de conocimientos compartida para todas las ROMs de GB y GBC.
+# Al probar cualquier juego, DragonRecomp consulta este archivo para prevenir
+# y corregir automáticamente problemas conocidos de MBCs, HALT bug, OAM DMA y CGB HDMA.
+
+[platform]
+name = "GB / GBC"
+cpu  = "Sharp SM83"
+apu  = "DMG / CGB 4-Channel PSG"
+ppu  = "DMG / CGB PPU (160x144)"
+
+[[rules]]
+id = "sm83_halt_bug_and_interrupt_dispatch"
+description = "Cuando IME=0 y (IE & IF) != 0 al ejecutar HALT, la CPU no duerme sino que activa el HALT bug (el siguiente byte se lee dos veces sin incrementar PC). Las interrupciones anidadas deben retornar limpiamente al despachador C99."
+halt_bug_support = true
+
+[[rules]]
+id = "hr_oam_dma_trampoline_in_hram"
+description = "Los juegos de GB/GBC copian una rutina de espera de OAM DMA a HRAM ($FF80-$FFFE) y la llaman mediante CALL $FF80. runtime_dispatch debe ejecutar código en RAM/HRAM mediante el intérprete sin registrar falsos fallbacks de ROM."
+hram_execution_interpreter = true
+
+[[rules]]
+id = "rst_28_inline_jump_tables"
+description = "Muchos títulos de Nintendo/Game Freak usan RST $28 (o un JSR helper) para indexar tablas de punteros de 16 bits incrustadas inmediatamente después de la instrucción RST/CALL."
+inline_rst_jump_tables = true
+
+[[rules]]
+id = "cgb_key1_speed_switch_and_hdma"
+description = "En modo CGB, STOP con KEY1 bit 0 activo conmuta entre velocidad normal (4.19 MHz) y doble velocidad (8.38 MHz), duplicando los ciclos de CPU por scanline de PPU."
+cgb_double_speed = true
