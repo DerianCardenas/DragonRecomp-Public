@@ -19,6 +19,7 @@ permissions:
 jobs:
   package-linux:
     name: Package Linux x64
+    if: github.repository == 'DerianCardenas/DragonRecomp-Public' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
