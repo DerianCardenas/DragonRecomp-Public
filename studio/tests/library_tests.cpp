@@ -247,7 +247,12 @@ void test_portable_and_import() {
 
     // 2. Inspect portable folder WITHOUT ROM in roms/ -> has_valid_rom() must be false
     {
-        const auto insp = GameLibrary::inspect_portable_folder(pkg_res.linux_package_path);
+#if defined(_WIN32)
+        const auto& host_pkg_path = pkg_res.windows_package_path;
+#else
+        const auto& host_pkg_path = pkg_res.linux_package_path;
+#endif
+        const auto insp = GameLibrary::inspect_portable_folder(host_pkg_path);
         assert(insp.has_executable());
         assert(!insp.has_valid_rom());
         assert(insp.hinted_sha1 == rom.sha1);
@@ -274,7 +279,12 @@ void test_portable_and_import() {
         ines[2] = 'S';
         ines[3] = 0x1A;
         ines[4] = 1;  // 16 KB PRG
-        const auto rom_in_pkg = pkg_res.linux_package_path / "roms" / "contra.nes";
+#if defined(_WIN32)
+        const auto& host_pkg_path = pkg_res.windows_package_path;
+#else
+        const auto& host_pkg_path = pkg_res.linux_package_path;
+#endif
+        const auto rom_in_pkg = host_pkg_path / "roms" / "contra.nes";
         std::ofstream out(rom_in_pkg, std::ios::binary);
         out.write(reinterpret_cast<const char*>(ines.data()),
                   static_cast<std::streamsize>(ines.size()));
@@ -282,15 +292,15 @@ void test_portable_and_import() {
 
         // Update LEEME.txt with the actual SHA-1 of the synthetic ROM so hinted_sha1 matches
         const std::string actual_sha = dragon::sha1_hex(std::span<const uint8_t>(ines));
-        std::ofstream(pkg_res.linux_package_path / "roms" / "LEEME.txt")
+        std::ofstream(host_pkg_path / "roms" / "LEEME.txt")
             << "Este paquete NO incluye el ROM de \"Contra Test\".\n"
             << "  " << actual_sha << "\n";
-        std::ofstream(pkg_res.linux_package_path / "README.txt")
-            << "  Contra Test \xE2\x80\x94 Recompilacion Nativa para Linux\n"
+        std::ofstream(host_pkg_path / "README.txt")
+            << "  Contra Test \xE2\x80\x94 Recompilacion Nativa\n"
             << "Plataforma original: NES\n"
             << "Hash SHA-1:         " << actual_sha << "\n";
 
-        const auto insp = GameLibrary::inspect_portable_folder(pkg_res.linux_package_path);
+        const auto insp = GameLibrary::inspect_portable_folder(host_pkg_path);
         assert(insp.has_executable());
         assert(insp.has_valid_rom());
         assert(insp.rom_info.sha1 == actual_sha);
