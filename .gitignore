@@ -38,3 +38,9 @@ imgui.ini
 !roms/test/
 !roms/test/nestest.nes
 !roms/test/nestest.log
+
+# Excluded internal directories
+.orchestrator/
+.agents/
+AGENTS.md
+CLAUDE.md
