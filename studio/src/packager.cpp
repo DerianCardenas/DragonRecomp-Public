@@ -683,6 +683,8 @@ PackageResult Packager::create_linux_package(const PackageOptions& options,
     result.success = true;
     result.package_path = package_dir;
     result.executable_path = dest_bin;
+    result.linux_package_path = package_dir;
+    result.linux_executable_path = dest_bin;
     result.total_bytes = bytes;
     return result;
 }
@@ -800,6 +802,8 @@ PackageResult Packager::create_windows_package(const PackageOptions& options,
     result.success = true;
     result.package_path = package_dir;
     result.executable_path = dest_bin;
+    result.windows_package_path = package_dir;
+    result.windows_executable_path = dest_bin;
     result.total_bytes = bytes;
     return result;
 }
@@ -846,6 +850,10 @@ PackageResult Packager::create_portable_package(const PackageOptions& options) {
         result.success = true;
         result.package_path = options.output_directory;
         result.executable_path = res_win.executable_path;
+        result.linux_package_path = res_lin.package_path;
+        result.linux_executable_path = res_lin.executable_path;
+        result.windows_package_path = res_win.package_path;
+        result.windows_executable_path = res_win.executable_path;
         result.total_bytes = res_lin.total_bytes + res_win.total_bytes;
         return result;
     }

@@ -29,6 +29,10 @@ struct PackageResult {
     bool success = false;
     std::filesystem::path package_path;
     std::filesystem::path executable_path;
+    std::filesystem::path linux_package_path;
+    std::filesystem::path linux_executable_path;
+    std::filesystem::path windows_package_path;
+    std::filesystem::path windows_executable_path;
     std::string error_message;
     size_t total_bytes = 0;
 };

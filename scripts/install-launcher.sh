@@ -29,16 +29,16 @@ cat > "${DESKTOP_FILE}" <<EOF
 Version=1.0
 Type=Application
 Name=DragonRecomp Studio
-GenericName=NES & SNES Static Recompiler
-Comment=Drag & Drop static recompilation of NES and SNES ROMs to native Linux ELFs
-Exec=${EXEC_BIN}
+GenericName=NES, SNES, GB & GBA Static Recompiler
+Comment=Drag & Drop static recompilation of NES, SNES, Game Boy, and GBA ROMs to native Linux executables
+Exec=${EXEC_BIN} %f
 Icon=dragon-studio
 Path=${REPO_ROOT}
 Terminal=false
 StartupNotify=true
 Categories=Game;Emulator;
-Keywords=NES;SNES;Recompiler;Dragon;Emulator;Gaming;
-MimeType=application/x-nes-rom;application/x-snes-rom;
+Keywords=NES;SNES;GameBoy;GBA;Recompiler;Dragon;Emulator;Gaming;
+MimeType=application/x-nes-rom;application/x-snes-rom;application/x-gameboy-rom;application/x-gba-rom;
 EOF
 
 chmod +x "${DESKTOP_FILE}"

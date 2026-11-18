@@ -1,10 +1,22 @@
 #include "studio/app.h"
 
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#else
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
 
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
@@ -27,6 +39,36 @@ void SDLCALL on_export_folder_picked(void* userdata, const char* const* filelist
     if (userdata && filelist && *filelist) {
         auto* app = static_cast<StudioApp*>(userdata);
         app->set_export_directory(*filelist);
+    }
+}
+
+void SDLCALL on_import_folder_picked(void* userdata, const char* const* filelist, int /*filter*/) {
+    if (userdata && filelist && *filelist) {
+        auto* app = static_cast<StudioApp*>(userdata);
+        app->queue_import_portable(*filelist);
+    }
+}
+
+void SDLCALL on_manual_import_rom_picked(void* userdata, const char* const* filelist,
+                                         int /*filter*/) {
+    if (userdata && filelist && *filelist) {
+        auto* app = static_cast<StudioApp*>(userdata);
+        app->queue_manual_import_rom(*filelist);
+    }
+}
+
+struct CoverDialogPayload {
+    StudioApp* app;
+    std::string sha1;
+};
+
+void SDLCALL on_cover_file_picked(void* userdata, const char* const* filelist, int /*filter*/) {
+    auto* payload = static_cast<CoverDialogPayload*>(userdata);
+    if (payload) {
+        if (payload->app && filelist && *filelist) {
+            payload->app->queue_assign_cover(payload->sha1, *filelist);
+        }
+        delete payload;
     }
 }
 
@@ -58,12 +100,14 @@ bool StudioApp::init(int width, int height) {
         return false;
     }
 
-    window_ = SDL_CreateWindow("DragonRecomp Studio — Recompilador Estatico Autonomo", width,
-                               height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+    window_ = SDL_CreateWindow(
+        "DragonRecomp Studio — Recompilador Estatico Autonomo", width, height,
+        SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_FULLSCREEN);
     if (!window_) {
         std::fprintf(stderr, "error: SDL_CreateWindow failed: %s\n", SDL_GetError());
         return false;
     }
+    SDL_SetWindowFullscreen(window_, true);
 
     renderer_ = SDL_CreateRenderer(window_, nullptr);
     if (!renderer_) {
@@ -96,6 +140,23 @@ bool StudioApp::init(int width, int height) {
     export_dir_buf_[sizeof(export_dir_buf_) - 1] = '\0';
 
     running_ = true;
+    library_.load();
+
+    // Remove legacy entries that were added before portable-only enforcement (no package_dir and no
+    // executables).
+    std::vector<std::string> unexported_shas;
+    for (const auto& e : library_.entries()) {
+        if (!e.is_portable()) {
+            unexported_shas.push_back(e.sha1);
+        }
+    }
+    if (!unexported_shas.empty()) {
+        for (const auto& s : unexported_shas) {
+            library_.remove(s);
+        }
+        library_.save();
+    }
+
     return true;
 }
 
@@ -127,6 +188,7 @@ void StudioApp::load_rom(const std::filesystem::path& rom_path) {
     RomInfo info = detect_rom(rom_path);
     if (info.is_valid()) {
         active_rom_ = info;
+        current_view_ = StudioView::Recompiler;
         show_package_modal_ = false;
         export_status_message_.clear();
         last_package_result_ = PackageResult{};
@@ -134,6 +196,242 @@ void StudioApp::load_rom(const std::filesystem::path& rom_path) {
         pipeline_.clear_last_game_error();
         pipeline_.start_pipeline(info);
     }
+}
+
+int StudioApp::console_tab_for_platform(const std::string& platform_key) const {
+    if (platform_key == "snes")
+        return 1;
+    if (platform_key == "gb" || platform_key == "gbc")
+        return 2;
+    if (platform_key == "gba")
+        return 3;
+    return 0;  // nes
+}
+
+void StudioApp::open_import_portable_dialog() {
+    const char* default_dir = export_dir_buf_[0] != '\0' ? export_dir_buf_ : nullptr;
+    SDL_ShowOpenFolderDialog(&on_import_folder_picked, this, window_, default_dir, false);
+}
+
+void StudioApp::queue_import_portable(const std::filesystem::path& folder_path) {
+    std::lock_guard<std::mutex> lock(pending_import_mutex_);
+    pending_import_folder_ = folder_path;
+}
+
+void StudioApp::open_manual_import_rom_dialog() {
+    static const SDL_DialogFileFilter kRomFilters[] = {
+        {"ROMs de NES, SNES, GB/GBC y GBA (*.nes, *.sfc, *.smc, *.gb, *.gbc, *.gba)",
+         "nes;sfc;smc;gb;gbc;gba"},
+        {"Todos los archivos", "*"}};
+    SDL_ShowOpenFileDialog(&on_manual_import_rom_picked, this, window_, kRomFilters, 2, nullptr,
+                           false);
+}
+
+void StudioApp::queue_manual_import_rom(const std::filesystem::path& rom_path) {
+    std::lock_guard<std::mutex> lock(pending_import_mutex_);
+    pending_manual_rom_path_ = rom_path;
+}
+
+void StudioApp::import_portable_folder(const std::filesystem::path& folder_path) {
+    current_view_ = StudioView::Library;
+    PortableInspection insp = GameLibrary::inspect_portable_folder(folder_path);
+
+    if (insp.has_valid_rom()) {
+        GameEntry* entry =
+            library_.add_portable(insp.rom_info, insp.package_dir, insp.executable_linux,
+                                  insp.executable_windows, GameMode::Native);
+        if (entry) {
+            library_.save();
+            library_console_tab_ = console_tab_for_platform(entry->platform);
+            library_notice_ = "✔ Juego recompilado importado: " + entry->title;
+            if (entry->cover_path.empty()) {
+                cover_mgr_.download_cover_async(
+                    *entry, [this, sha1 = entry->sha1](bool ok, const std::filesystem::path& path) {
+                        if (ok) {
+                            queue_assign_cover(sha1, path);
+                        }
+                    });
+            }
+        }
+        return;
+    }
+
+    // No valid ROM was found in `roms/` -> open manual import modal with the required alert
+    pending_inspection_ = insp;
+    std::strncpy(manual_import_title_buf_, insp.hinted_title.c_str(),
+                 sizeof(manual_import_title_buf_) - 1);
+    manual_import_title_buf_[sizeof(manual_import_title_buf_) - 1] = '\0';
+
+    switch (insp.hinted_platform) {
+        case RomPlatform::NES:
+            manual_import_platform_idx_ = 0;
+            break;
+        case RomPlatform::SNES:
+            manual_import_platform_idx_ = 1;
+            break;
+        case RomPlatform::GameBoy:
+            manual_import_platform_idx_ = 2;
+            break;
+        case RomPlatform::GameBoyColor:
+            manual_import_platform_idx_ = 3;
+            break;
+        case RomPlatform::GameBoyAdvance:
+            manual_import_platform_idx_ = 4;
+            break;
+        default:
+            if (library_console_tab_ == 1)
+                manual_import_platform_idx_ = 1;
+            else if (library_console_tab_ == 2)
+                manual_import_platform_idx_ = 2;
+            else if (library_console_tab_ == 3)
+                manual_import_platform_idx_ = 4;
+            else
+                manual_import_platform_idx_ = 0;
+            break;
+    }
+
+    std::strncpy(manual_import_exec_linux_buf_, insp.executable_linux.string().c_str(),
+                 sizeof(manual_import_exec_linux_buf_) - 1);
+    manual_import_exec_linux_buf_[sizeof(manual_import_exec_linux_buf_) - 1] = '\0';
+
+    std::strncpy(manual_import_exec_win_buf_, insp.executable_windows.string().c_str(),
+                 sizeof(manual_import_exec_win_buf_) - 1);
+    manual_import_exec_win_buf_[sizeof(manual_import_exec_win_buf_) - 1] = '\0';
+
+    manual_import_rom_buf_[0] = '\0';
+    manual_import_copy_rom_ = true;
+    manual_import_error_.clear();
+    show_manual_import_modal_ = true;
+}
+
+void StudioApp::launch_portable_game(const GameEntry& entry) {
+    if (pipeline_.is_game_running() || portable_game_pid_ > 0) {
+        library_notice_ = "Ya hay un juego en ejecucion.";
+        return;
+    }
+
+    const std::filesystem::path bin = GameLibrary::resolve_host_executable(entry);
+    std::error_code ec;
+    if (bin.empty() || !std::filesystem::exists(bin, ec)) {
+#if defined(_WIN32)
+        if (!entry.executable_linux.empty() && entry.executable_windows.empty()) {
+            library_notice_ = "El paquete de \"" + entry.title +
+                              "\" fue exportado solo para Linux. Exportalo para Windows o Ambos.";
+            return;
+        }
+#else
+        if (!entry.executable_windows.empty() && entry.executable_linux.empty()) {
+            library_notice_ = "El paquete de \"" + entry.title +
+                              "\" fue exportado solo para Windows (.exe). Exportalo para Linux o "
+                              "Ambos.";
+            return;
+        }
+#endif
+        library_notice_ = "No se encontro el ejecutable portable de \"" + entry.title + "\" en " +
+                          entry.package_dir.string();
+        return;
+    }
+
+    const std::filesystem::path abs_bin = std::filesystem::absolute(bin, ec);
+    const std::filesystem::path work_dir = abs_bin.parent_path();
+
+    // Find a valid ROM path if available (either entry.rom_path or inside work_dir/roms)
+    std::filesystem::path rom_to_pass;
+    if (!entry.rom_path.empty() && std::filesystem::exists(entry.rom_path, ec)) {
+        rom_to_pass = std::filesystem::absolute(entry.rom_path, ec);
+    } else {
+        const auto insp = GameLibrary::inspect_portable_folder(work_dir);
+        if (!insp.found_rom_path.empty() && std::filesystem::exists(insp.found_rom_path, ec)) {
+            rom_to_pass = std::filesystem::absolute(insp.found_rom_path, ec);
+        }
+    }
+
+    const int64_t now = std::chrono::duration_cast<std::chrono::seconds>(
+                            std::chrono::system_clock::now().time_since_epoch())
+                            .count();
+
+#if !defined(_WIN32)
+    chmod(abs_bin.c_str(), 0755);
+
+    std::vector<std::string> arg_strings;
+    arg_strings.push_back(abs_bin.string());
+    if (!rom_to_pass.empty()) {
+        arg_strings.push_back("--rom");
+        arg_strings.push_back(rom_to_pass.string());
+    }
+    if (entry.settings.fullscreen) {
+        arg_strings.push_back("--fullscreen");
+    }
+    if (entry.settings.crt_filter) {
+        arg_strings.push_back("--crt");
+    }
+
+    std::vector<char*> argv_ptrs;
+    argv_ptrs.reserve(arg_strings.size() + 1);
+    for (auto& s : arg_strings) {
+        argv_ptrs.push_back(s.data());
+    }
+    argv_ptrs.push_back(nullptr);
+
+    const std::string lib_dir = (work_dir / "lib").string();
+    std::string ld_path = lib_dir;
+    if (const char* cur_ld = std::getenv("LD_LIBRARY_PATH"); cur_ld && cur_ld[0] != '\0') {
+        ld_path += ":" + std::string(cur_ld);
+    }
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        library_notice_ = "Error al iniciar el proceso del juego portable.";
+        return;
+    }
+    if (pid == 0) {
+        if (chdir(work_dir.c_str()) != 0) {
+            _exit(126);
+        }
+        setenv("LD_LIBRARY_PATH", ld_path.c_str(), 1);
+        execv(abs_bin.c_str(), argv_ptrs.data());
+        _exit(127);
+    }
+
+    portable_game_pid_ = static_cast<int>(pid);
+    portable_game_sha1_ = entry.sha1;
+    portable_game_start_unix_ = now;
+    library_.touch_played(entry.sha1, 0, now);
+    library_.save();
+    library_notice_ = "▶ Ejecutando portable: " + entry.title;
+#else
+    std::string cmd = "\"" + abs_bin.string() + "\"";
+    if (!rom_to_pass.empty()) {
+        cmd += " --rom \"" + rom_to_pass.string() + "\"";
+    }
+    if (entry.settings.fullscreen) {
+        cmd += " --fullscreen";
+    }
+    if (entry.settings.crt_filter) {
+        cmd += " --crt";
+    }
+
+    STARTUPINFOA si{};
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION pi{};
+    std::vector<char> cmd_buf(cmd.begin(), cmd.end());
+    cmd_buf.push_back('\0');
+
+    if (!CreateProcessA(NULL, cmd_buf.data(), NULL, NULL, FALSE, 0, NULL, work_dir.string().c_str(),
+                        &si, &pi)) {
+        library_notice_ = "No se pudo ejecutar el binario portable de Windows: " + abs_bin.string();
+        return;
+    }
+
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+    portable_game_pid_ = static_cast<int>(pi.dwProcessId);
+    portable_game_sha1_ = entry.sha1;
+    portable_game_start_unix_ = now;
+    library_.touch_played(entry.sha1, 0, now);
+    library_.save();
+    library_notice_ = "▶ Ejecutando portable: " + entry.title;
+#endif
 }
 
 void StudioApp::queue_load_rom(const std::filesystem::path& rom_path) {
@@ -153,6 +451,21 @@ void StudioApp::open_rom_file_dialog() {
     SDL_ShowOpenFileDialog(&on_rom_file_picked, this, window_, kRomFilters, 6, nullptr, false);
 }
 
+void StudioApp::open_cover_file_dialog(const std::string& sha1) {
+    static const SDL_DialogFileFilter kCoverFilters[] = {
+        {"Imagenes de caratula (*.png, *.jpg, *.jpeg, *.bmp, *.webp)", "png;jpg;jpeg;bmp;webp"},
+        {"Todos los archivos", "*"}};
+    auto* payload = new CoverDialogPayload{this, sha1};
+    SDL_ShowOpenFileDialog(&on_cover_file_picked, payload, window_, kCoverFilters, 2, nullptr,
+                           false);
+}
+
+void StudioApp::queue_assign_cover(const std::string& sha1,
+                                   const std::filesystem::path& cover_path) {
+    std::lock_guard<std::mutex> lock(pending_cover_mutex_);
+    pending_covers_to_assign_.emplace_back(sha1, cover_path);
+}
+
 void StudioApp::process_events() {
     std::filesystem::path pending;
     {
@@ -166,6 +479,75 @@ void StudioApp::process_events() {
         load_rom(pending);
     }
 
+    std::filesystem::path pending_import;
+    std::filesystem::path pending_manual_rom;
+    {
+        std::lock_guard<std::mutex> lock(pending_import_mutex_);
+        if (!pending_import_folder_.empty()) {
+            pending_import = pending_import_folder_;
+            pending_import_folder_.clear();
+        }
+        if (!pending_manual_rom_path_.empty()) {
+            pending_manual_rom = pending_manual_rom_path_;
+            pending_manual_rom_path_.clear();
+        }
+    }
+    if (!pending_import.empty()) {
+        import_portable_folder(pending_import);
+    }
+    if (!pending_manual_rom.empty()) {
+        std::strncpy(manual_import_rom_buf_, pending_manual_rom.string().c_str(),
+                     sizeof(manual_import_rom_buf_) - 1);
+        manual_import_rom_buf_[sizeof(manual_import_rom_buf_) - 1] = '\0';
+        RomInfo info = detect_rom(pending_manual_rom);
+        if (info.is_valid()) {
+            if (manual_import_title_buf_[0] == '\0' && !info.clean_name.empty()) {
+                std::strncpy(manual_import_title_buf_, info.clean_name.c_str(),
+                             sizeof(manual_import_title_buf_) - 1);
+                manual_import_title_buf_[sizeof(manual_import_title_buf_) - 1] = '\0';
+            }
+            switch (info.platform) {
+                case RomPlatform::NES:
+                    manual_import_platform_idx_ = 0;
+                    break;
+                case RomPlatform::SNES:
+                    manual_import_platform_idx_ = 1;
+                    break;
+                case RomPlatform::GameBoy:
+                    manual_import_platform_idx_ = 2;
+                    break;
+                case RomPlatform::GameBoyColor:
+                    manual_import_platform_idx_ = 3;
+                    break;
+                case RomPlatform::GameBoyAdvance:
+                    manual_import_platform_idx_ = 4;
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+    std::vector<std::pair<std::string, std::filesystem::path>> pending_covers;
+    {
+        std::lock_guard<std::mutex> lock(pending_cover_mutex_);
+        if (!pending_covers_to_assign_.empty()) {
+            pending_covers.swap(pending_covers_to_assign_);
+        }
+    }
+    for (const auto& [sha1, path] : pending_covers) {
+        std::filesystem::path assigned = path;
+        if (path.parent_path() != CoverManager::covers_dir()) {
+            assigned = cover_mgr_.assign_manual_cover(sha1, path);
+        } else {
+            cover_mgr_.invalidate(sha1);
+        }
+        if (!assigned.empty()) {
+            library_.set_cover(sha1, assigned);
+            library_.save();
+        }
+    }
+
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         ImGui_ImplSDL3_ProcessEvent(&event);
@@ -175,9 +557,34 @@ void StudioApp::process_events() {
         } else if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
                    event.window.windowID == SDL_GetWindowID(window_)) {
             running_ = false;
+        } else if (event.type == SDL_EVENT_KEY_DOWN &&
+                   (event.key.key == SDLK_F11 ||
+                    (event.key.key == SDLK_RETURN && (event.key.mod & SDL_KMOD_ALT)))) {
+            const bool is_fs = (SDL_GetWindowFlags(window_) & SDL_WINDOW_FULLSCREEN) != 0;
+            SDL_SetWindowFullscreen(window_, !is_fs);
         } else if (event.type == SDL_EVENT_DROP_FILE) {
             if (event.drop.data) {
-                load_rom(event.drop.data);
+                const std::filesystem::path dropped = event.drop.data;
+                std::error_code ec;
+                if (std::filesystem::is_directory(dropped, ec)) {
+                    import_portable_folder(dropped);
+                } else if (CoverManager::is_image_file(dropped)) {
+                    std::string target_sha;
+                    if (active_rom_.is_valid()) {
+                        target_sha = active_rom_.sha1;
+                    } else if (const GameEntry* last = library_.last_played()) {
+                        target_sha = last->sha1;
+                    }
+                    if (!target_sha.empty()) {
+                        const auto assigned = cover_mgr_.assign_manual_cover(target_sha, dropped);
+                        if (!assigned.empty()) {
+                            library_.set_cover(target_sha, assigned);
+                            library_.save();
+                        }
+                    }
+                } else {
+                    load_rom(dropped);
+                }
             }
         }
     }
@@ -204,7 +611,7 @@ void StudioApp::run() {
 void StudioApp::render_header() {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImVec2 p0 = ImGui::GetCursorScreenPos();
-    const float header_h = 76.0f;
+    const float header_h = 82.0f;
     ImVec2 p1 = ImVec2(p0.x + ImGui::GetContentRegionAvail().x, p0.y + header_h);
 
     // Subtle vertical gradient surface with a thin accent underline.
@@ -216,12 +623,60 @@ void StudioApp::render_header() {
                              ImGui::GetColorU32(ThemeColors::AccentCyan), 0.0f);
 
     // Logo & title, crisp H1.
-    ImGui::SetCursorScreenPos(ImVec2(p0.x + 20.0f, p0.y + (header_h - 32.0f) * 0.5f));
+    ImGui::SetCursorScreenPos(ImVec2(p0.x + 24.0f, p0.y + (header_h - 32.0f) * 0.5f));
     ImGui::PushFont(fonts_.h1);
     ImGui::TextColored(ThemeColors::AccentCyan, "DRAGONRECOMP");
     ImGui::SameLine(0, 10.0f);
     ImGui::TextColored(ThemeColors::TextPrimary, "STUDIO");
+    const float logo_end_x = ImGui::GetItemRectMax().x;
     ImGui::PopFont();
+
+    // Navigation Tabs in Header: bigger size, plenty of space after title
+    const float tabs_x = logo_end_x + 50.0f;
+    const float tab_h = 42.0f;
+    const float tab_w_lib = 180.0f;
+    const float tab_w_rec = 220.0f;
+
+    ImGui::SetCursorScreenPos(ImVec2(tabs_x, p0.y + (header_h - tab_h) * 0.5f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
+    ImGui::PushFont(fonts_.body_bold);
+
+    const bool is_lib = (current_view_ == StudioView::Library);
+    if (is_lib) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ThemeColors::AccentCyan);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.06f, 0.08f, 0.10f, 1.0f));
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Button, ThemeColors::SurfaceAlt);
+        ImGui::PushStyleColor(ImGuiCol_Text, ThemeColors::TextMuted);
+    }
+    if (ImGui::Button("BIBLIOTECA", ImVec2(tab_w_lib, tab_h))) {
+        current_view_ = StudioView::Library;
+    }
+    ImGui::PopStyleColor(2);
+
+    ImGui::SameLine(0, 12.0f);
+
+    const bool is_rec = (current_view_ == StudioView::Recompiler);
+    if (is_rec) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ThemeColors::AccentCyan);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.06f, 0.08f, 0.10f, 1.0f));
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Button, ThemeColors::SurfaceAlt);
+        ImGui::PushStyleColor(ImGuiCol_Text, ThemeColors::TextMuted);
+    }
+    std::string rec_tab = "RECOMPILADOR";
+    if (active_rom_.is_valid()) {
+        rec_tab = "RECOMP: " + active_rom_.clean_name;
+        if (rec_tab.size() > 22) {
+            rec_tab = rec_tab.substr(0, 19) + "...";
+        }
+    }
+    if (ImGui::Button(rec_tab.c_str(), ImVec2(tab_w_rec, tab_h))) {
+        current_view_ = StudioView::Recompiler;
+    }
+    ImGui::PopStyleColor(2);
+    ImGui::PopFont();
+    ImGui::PopStyleVar();
 
     // System-status pill, right-aligned.
     ImGui::PushFont(fonts_.small);
@@ -370,6 +825,19 @@ void StudioApp::render_rom_card() {
     ImGui::SetColumnWidth(2, std::max(180.0f, total_w * 0.20f));
 
     // Col 1: Title and Platform
+    const GameEntry* entry = library_.find(active_rom_.sha1);
+    const std::filesystem::path cover_path = entry ? entry->cover_path : std::filesystem::path{};
+    SDL_Texture* cover_tex = cover_mgr_.get_texture(renderer_, active_rom_.sha1, cover_path);
+    if (cover_tex) {
+        const ImVec2 p = ImGui::GetCursorScreenPos();
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        dl->AddImageRounded((ImTextureID)(intptr_t)cover_tex, p, ImVec2(p.x + 64.f, p.y + 86.f),
+                            ImVec2(0, 0), ImVec2(1, 1), IM_COL32_WHITE, 4.f);
+        ImGui::Dummy(ImVec2(68.f, 86.f));
+        ImGui::SameLine();
+        ImGui::BeginGroup();
+    }
+
     ImGui::PushFont(fonts_.small);
     ImGui::TextColored(ThemeColors::TextMuted, "TITULO DE LA ROM");
     ImGui::PopFont();
@@ -381,6 +849,10 @@ void StudioApp::render_rom_card() {
     ImGui::TextColored(ThemeColors::TextMuted, "PLATAFORMA:");
     ImGui::SameLine();
     ImGui::TextColored(ThemeColors::AccentCyan, "%s", active_rom_.platform_name().c_str());
+
+    if (cover_tex) {
+        ImGui::EndGroup();
+    }
 
     ImGui::NextColumn();
 
@@ -421,6 +893,10 @@ void StudioApp::render_rom_card() {
 
     // Col 4: Action buttons
     ImGui::Dummy(ImVec2(0, 4.0f));
+    if (ImGui::Button("📚 Ver Biblioteca", ImVec2(-1, 38.0f))) {
+        current_view_ = StudioView::Library;
+    }
+    ImGui::Spacing();
     if (ImGui::Button("Abrir otra ROM", ImVec2(-1, 38.0f))) {
         open_rom_file_dialog();
     }
@@ -949,6 +1425,29 @@ void StudioApp::render_package_modal() {
             last_package_result_ = Packager::create_portable_package(opts);
             if (last_package_result_.success) {
                 export_status_message_ = "Juego exportado satisfactoriamente";
+
+                const bool interpreter_only = (pipeline_.stats().functions == 0);
+                const GameMode mode = interpreter_only ? GameMode::Interpreter : GameMode::Native;
+
+                GameEntry* entry =
+                    library_.add_portable(active_rom_, last_package_result_.package_path,
+                                          last_package_result_.linux_executable_path,
+                                          last_package_result_.windows_executable_path, mode);
+                if (entry) {
+                    entry->settings.fullscreen = fullscreen_option_;
+                    entry->settings.crt_filter = crt_filter_option_;
+                    library_.save();
+                    library_console_tab_ = console_tab_for_platform(entry->platform);
+                    if (entry->cover_path.empty()) {
+                        cover_mgr_.download_cover_async(
+                            *entry,
+                            [this, sha1 = entry->sha1](bool ok, const std::filesystem::path& path) {
+                                if (ok) {
+                                    queue_assign_cover(sha1, path);
+                                }
+                            });
+                    }
+                }
             } else {
                 export_status_message_ = "Error al exportar: " + last_package_result_.error_message;
             }
@@ -1001,6 +1500,12 @@ void StudioApp::render_package_modal() {
             if (ImGui::Button("Abrir Carpeta", ImVec2(160.0f, 38.0f))) {
                 open_folder_in_file_manager(last_package_result_.package_path);
             }
+            ImGui::SameLine(0, 14.0f);
+            if (ImGui::Button("📚 Ver en Biblioteca", ImVec2(180.0f, 38.0f))) {
+                show_package_modal_ = false;
+                current_view_ = StudioView::Library;
+                ImGui::CloseCurrentPopup();
+            }
             ImGui::SameLine(0, 16.0f);
             ImGui::TextColored(
                 ThemeColors::TextMuted, "Tamano: %.2f MiB",
@@ -1017,6 +1522,196 @@ void StudioApp::render_package_modal() {
 
         if (ImGui::Button("Cerrar", ImVec2(120.0f, 38.0f))) {
             show_package_modal_ = false;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+}
+
+void StudioApp::render_manual_import_modal() {
+    if (!show_manual_import_modal_) {
+        return;
+    }
+
+    ImGui::OpenPopup("ImportarRecompiladoManualModal");
+
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(840.0f, 560.0f));
+
+    if (ImGui::BeginPopupModal(
+            "ImportarRecompiladoManualModal", &show_manual_import_modal_,
+            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        ImVec2 p0 = ImGui::GetCursorScreenPos();
+        ImVec2 p1 = ImVec2(p0.x + ImGui::GetContentRegionAvail().x, p0.y + 38.0f);
+        draw_list->AddRectFilled(p0, p1, IM_COL32(24, 29, 38, 255), 6.0f);
+        draw_list->AddRect(p0, p1, IM_COL32(45, 55, 75, 255), 6.0f);
+
+        ImGui::SetCursorScreenPos(ImVec2(p0.x + 14.0f, p0.y + 8.0f));
+        ImGui::PushFont(fonts_.h2);
+        ImGui::TextColored(ThemeColors::AccentCyan, "IMPORTAR JUEGO RECOMPILADO — DATOS MANUALES");
+        ImGui::PopFont();
+
+        ImGui::SetCursorScreenPos(ImVec2(p1.x - 32.0f, p0.y + 6.0f));
+        if (ImGui::Button("✕##CloseManualImport", ImVec2(24.0f, 24.0f))) {
+            show_manual_import_modal_ = false;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SetCursorScreenPos(ImVec2(p0.x, p1.y + 12.0f));
+
+        // Required Alert Banner
+        ImVec2 alert_p0 = ImGui::GetCursorScreenPos();
+        const float alert_w = ImGui::GetContentRegionAvail().x;
+        const float alert_h = 46.0f;
+        ImVec2 alert_p1 = ImVec2(alert_p0.x + alert_w, alert_p0.y + alert_h);
+        draw_list->AddRectFilled(alert_p0, alert_p1, IM_COL32(58, 38, 12, 255), 6.0f);
+        draw_list->AddRect(alert_p0, alert_p1, IM_COL32(220, 150, 35, 255), 6.0f);
+
+        const char* alert_msg =
+            "⚠  No se encontro ningún rom en la carpeta correspondiente, llena los datos del juego "
+            "manualmente";
+        ImVec2 alert_sz = ImGui::CalcTextSize(alert_msg);
+        ImGui::SetCursorScreenPos(
+            ImVec2(alert_p0.x + std::max(12.0f, (alert_w - alert_sz.x) * 0.5f),
+                   alert_p0.y + (alert_h - alert_sz.y) * 0.5f));
+        ImGui::TextColored(ThemeColors::WarningAmber, "%s", alert_msg);
+
+        ImGui::SetCursorScreenPos(ImVec2(alert_p0.x, alert_p1.y + 14.0f));
+
+        ImGui::TextColored(ThemeColors::TextMuted, "Carpeta del ejecutable seleccionada:");
+        ImGui::SameLine();
+        ImGui::TextColored(ThemeColors::AccentCyan, "%s",
+                           pending_inspection_.package_dir.string().c_str());
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // 1. Title
+        ImGui::TextColored(ThemeColors::TextPrimary, "Titulo del juego:");
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::InputText("##ManualTitle", manual_import_title_buf_,
+                         sizeof(manual_import_title_buf_));
+
+        ImGui::Spacing();
+
+        // 2. Platform
+        const char* kPlatforms[] = {
+            "Nintendo NES (nes)",   "Super Nintendo (snes)",  "Game Boy (gb)",
+            "Game Boy Color (gbc)", "Game Boy Advance (gba)",
+        };
+        const char* kPlatformKeys[] = {"nes", "snes", "gb", "gbc", "gba"};
+        manual_import_platform_idx_ = std::clamp(manual_import_platform_idx_, 0, 4);
+
+        ImGui::TextColored(ThemeColors::TextPrimary, "Consola / Plataforma:");
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::Combo("##ManualPlatform", &manual_import_platform_idx_, kPlatforms,
+                     IM_ARRAYSIZE(kPlatforms));
+
+        ImGui::Spacing();
+
+        // 3. Detected executables (Linux / Windows)
+        const float half_w = (ImGui::GetContentRegionAvail().x - 16.0f) * 0.5f;
+        ImGui::BeginGroup();
+        ImGui::TextColored(ThemeColors::TextPrimary, "Ejecutable Linux:");
+        ImGui::SetNextItemWidth(half_w);
+        ImGui::InputText("##ManualExecLinux", manual_import_exec_linux_buf_,
+                         sizeof(manual_import_exec_linux_buf_));
+        ImGui::EndGroup();
+
+        ImGui::SameLine(0, 16.0f);
+
+        ImGui::BeginGroup();
+        ImGui::TextColored(ThemeColors::TextPrimary, "Ejecutable Windows (.exe):");
+        ImGui::SetNextItemWidth(half_w);
+        ImGui::InputText("##ManualExecWin", manual_import_exec_win_buf_,
+                         sizeof(manual_import_exec_win_buf_));
+        ImGui::EndGroup();
+
+        ImGui::Spacing();
+
+        // 4. Optional ROM file linking / copying
+        ImGui::TextColored(ThemeColors::TextPrimary,
+                           "Archivo ROM original (Opcional — para vincular o copiar a 'roms/'):");
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 160.0f);
+        ImGui::InputText("##ManualRomPath", manual_import_rom_buf_, sizeof(manual_import_rom_buf_));
+        ImGui::SameLine(0, 10.0f);
+        if (ImGui::Button("Examinar ROM...", ImVec2(150.0f, 0))) {
+            open_manual_import_rom_dialog();
+        }
+        ImGui::Checkbox("Si se selecciona un ROM, copiarlo a la carpeta 'roms/' del paquete",
+                        &manual_import_copy_rom_);
+
+        if (!manual_import_error_.empty()) {
+            ImGui::Spacing();
+            ImGui::TextColored(ThemeColors::DangerRed, "✖ %s", manual_import_error_.c_str());
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.06f, 0.65f, 0.45f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.08f, 0.78f, 0.55f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.88f, 0.62f, 1.0f));
+        if (ImGui::Button("✔  Guardar e Importar", ImVec2(240.0f, 42.0f))) {
+            if (manual_import_title_buf_[0] == '\0') {
+                manual_import_error_ = "Por favor ingresa el titulo del juego.";
+            } else {
+                std::filesystem::path final_rom_path;
+                std::error_code ec;
+                if (manual_import_rom_buf_[0] != '\0') {
+                    std::filesystem::path sel_rom(manual_import_rom_buf_);
+                    if (std::filesystem::exists(sel_rom, ec) &&
+                        std::filesystem::is_regular_file(sel_rom, ec)) {
+                        final_rom_path = sel_rom;
+                        if (manual_import_copy_rom_ && !pending_inspection_.package_dir.empty()) {
+                            const auto dest_roms = pending_inspection_.package_dir / "roms";
+                            std::filesystem::create_directories(dest_roms, ec);
+                            const auto dest_file = dest_roms / sel_rom.filename();
+                            std::filesystem::copy_file(
+                                sel_rom, dest_file,
+                                std::filesystem::copy_options::overwrite_existing, ec);
+                            if (!ec) {
+                                final_rom_path = dest_file;
+                            }
+                        }
+                    }
+                }
+
+                const std::string plat_key = kPlatformKeys[manual_import_platform_idx_];
+                GameEntry* entry = library_.add_manual_portable(
+                    manual_import_title_buf_, plat_key, pending_inspection_.package_dir,
+                    manual_import_exec_linux_buf_, manual_import_exec_win_buf_, final_rom_path,
+                    pending_inspection_.hinted_sha1);
+                if (entry) {
+                    library_.save();
+                    library_console_tab_ = console_tab_for_platform(entry->platform);
+                    library_notice_ = "✔ Juego importado en la biblioteca: " + entry->title;
+                    if (entry->cover_path.empty()) {
+                        cover_mgr_.download_cover_async(
+                            *entry,
+                            [this, sha1 = entry->sha1](bool ok, const std::filesystem::path& path) {
+                                if (ok) {
+                                    queue_assign_cover(sha1, path);
+                                }
+                            });
+                    }
+                    show_manual_import_modal_ = false;
+                    ImGui::CloseCurrentPopup();
+                } else {
+                    manual_import_error_ = "No se pudo registrar el juego. Verifica el titulo.";
+                }
+            }
+        }
+        ImGui::PopStyleColor(3);
+
+        ImGui::SameLine(0, 16.0f);
+        if (ImGui::Button("Cancelar", ImVec2(140.0f, 42.0f))) {
+            show_manual_import_modal_ = false;
             ImGui::CloseCurrentPopup();
         }
 
@@ -1041,33 +1736,39 @@ void StudioApp::render_ui() {
     ImGui::PopStyleVar(2);
 
     render_header();
+    track_library_state();
 
-    if (!active_rom_.is_valid()) {
-        render_drop_zone();
+    if (current_view_ == StudioView::Library) {
+        render_library();
     } else {
-        render_rom_card();
-        ImGui::Spacing();
+        if (!active_rom_.is_valid()) {
+            render_drop_zone();
+        } else {
+            render_rom_card();
+            ImGui::Spacing();
 
-        switch (pipeline_.stage()) {
-            case PipelineStage::Idle:
-                // Auto starts pipeline on load
-                break;
-            case PipelineStage::Analyzing:
-            case PipelineStage::Disassembling:
-            case PipelineStage::Emitting:
-            case PipelineStage::CompilingNative:
-                render_pipeline_progress();
-                break;
-            case PipelineStage::Ready:
-                render_ready_hub();
-                break;
-            case PipelineStage::Failed:
-                render_error_view();
-                break;
+            switch (pipeline_.stage()) {
+                case PipelineStage::Idle:
+                    // Auto starts pipeline on load
+                    break;
+                case PipelineStage::Analyzing:
+                case PipelineStage::Disassembling:
+                case PipelineStage::Emitting:
+                case PipelineStage::CompilingNative:
+                    render_pipeline_progress();
+                    break;
+                case PipelineStage::Ready:
+                    render_ready_hub();
+                    break;
+                case PipelineStage::Failed:
+                    render_error_view();
+                    break;
+            }
         }
     }
 
     render_package_modal();
+    render_manual_import_modal();
 
     ImGui::End();
 }

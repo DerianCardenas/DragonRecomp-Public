@@ -113,6 +113,18 @@ std::string find_c_compiler() {
     if (SearchPathA(NULL, "gcc", ".exe", sizeof(buf), buf, NULL) > 0) {
         return std::string(buf);
     }
+#elif defined(__linux__) || defined(__unix__)
+    const std::vector<std::filesystem::path> linux_candidates = {
+        "/usr/bin/clang",
+        "/usr/local/bin/clang",
+        "/usr/bin/gcc",
+        "/usr/local/bin/gcc",
+    };
+    for (const auto& p : linux_candidates) {
+        if (std::filesystem::exists(p)) {
+            return p.string();
+        }
+    }
 #endif
     return "clang";
 }
@@ -145,6 +157,18 @@ std::string find_cxx_compiler() {
     }
     if (SearchPathA(NULL, "g++", ".exe", sizeof(buf), buf, NULL) > 0) {
         return std::string(buf);
+    }
+#elif defined(__linux__) || defined(__unix__)
+    const std::vector<std::filesystem::path> linux_candidates = {
+        "/usr/bin/clang++",
+        "/usr/local/bin/clang++",
+        "/usr/bin/g++",
+        "/usr/local/bin/g++",
+    };
+    for (const auto& p : linux_candidates) {
+        if (std::filesystem::exists(p)) {
+            return p.string();
+        }
     }
 #endif
     return "clang++";
@@ -964,7 +988,9 @@ bool Pipeline::compile_c_to_binary(const RomInfo& rom, const std::filesystem::pa
                             "No se pudo ejecutar Clang/GCC (" + cc_bin + "): " + spawn_err +
                             "\nAsegurate de que LLVM/Clang o MinGW este instalado y en el PATH.";
 #else
-                        thread_error_msg = "No se pudo ejecutar clang: " + spawn_err;
+                        thread_error_msg =
+                            "No se pudo ejecutar Clang/GCC (" + cc_bin + "): " + spawn_err +
+                            "\nAsegurate de que Clang o GCC este instalado en tu sistema.";
 #endif
                     }
                     break;
@@ -1035,7 +1061,8 @@ bool Pipeline::compile_c_to_binary(const RomInfo& rom, const std::filesystem::pa
                      "\nAsegurate de que LLVM/Clang este instalado y en el PATH (descarga desde "
                      "https://releases.llvm.org).";
 #else
-        error_msg_ = "No se pudo ejecutar clang++: " + spawn_err;
+        error_msg_ = "No se pudo ejecutar Clang++/G++ (" + cxx_bin + "): " + spawn_err +
+                     "\nAsegurate de que Clang++ o G++ este instalado en tu sistema.";
 #endif
         return false;
     }
@@ -1483,9 +1510,25 @@ void Pipeline::monitor_game_process(int pid, int stderr_fd, RomPlatform platform
     waitpid(pid, &status, 0);
     running_game_pid_.store(-1);
 
+    std::string clean_err;
+    std::istringstream iss(captured_err);
+    std::string line_str;
+    while (std::getline(iss, line_str)) {
+        while (!line_str.empty() && (line_str.back() == '\r' || line_str.back() == '\n')) {
+            line_str.pop_back();
+        }
+        if (line_str.empty() || line_str.rfind("FALLBACK", 0) == 0 ||
+            line_str.rfind("[DragonRecomp]", 0) == 0 || line_str.rfind("info:", 0) == 0) {
+            continue;
+        }
+        clean_err += line_str + "\n";
+    }
+
     if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (!captured_err.empty()) {
+        if (!clean_err.empty()) {
+            last_game_error_ = clean_err;
+        } else if (!captured_err.empty()) {
             last_game_error_ = captured_err;
         } else {
             last_game_error_ = "El juego termino con codigo " + std::to_string(WEXITSTATUS(status));

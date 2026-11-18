@@ -10,6 +10,14 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${REPO_ROOT}"
 
+# 1. Si existe dragon-studio en el directorio actual (paquete portable distribuible), ejecutarlo directamente
+if [ -x "${REPO_ROOT}/dragon-studio" ]; then
+    if [ -d "${REPO_ROOT}/lib" ]; then
+        export LD_LIBRARY_PATH="${REPO_ROOT}/lib:${LD_LIBRARY_PATH:-}"
+    fi
+    exec "${REPO_ROOT}/dragon-studio" "$@"
+fi
+
 STUDIO_BIN="${REPO_ROOT}/build/studio/dragon-studio"
 
 if [ ! -x "${STUDIO_BIN}" ]; then

@@ -1,0 +1,84 @@
+name: release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag name (e.g. v1.0.0)"
+        required: false
+        default: "v1.0.0"
+
+permissions:
+  contents: write
+
+jobs:
+  package-linux:
+    name: Package Linux x64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine Release Tag
+        id: rel_tag
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          elif [[ -n "${{ inputs.tag_name }}" ]]; then
+            echo "tag=${{ inputs.tag_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=v1.0.0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libasound2-dev libpulse-dev libx11-dev libxext-dev libwayland-dev libxkbcommon-dev
+
+      - name: Setup SDL3
+        run: |
+          if ! sudo apt-get install -y libsdl3-dev 2>/dev/null; then
+            echo "Building SDL3 from source..."
+            git clone --depth 1 --branch release-3.2.8 https://github.com/libsdl-org/SDL.git /tmp/sdl3 || \
+            git clone --depth 1 https://github.com/libsdl-org/SDL.git /tmp/sdl3
+            cmake -S /tmp/sdl3 -B /tmp/sdl3/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSDL_STATIC=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
+            sudo cmake --build /tmp/sdl3/build --target install
+            sudo ldconfig
+          fi
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DDRAGON_BUILD_STUDIO=ON \
+            -DDRAGON_BUILD_TESTS=OFF
+
+      - name: Build binaries
+        run: cmake --build build --target dragon-studio nesrecomp snesrecomp gbrecomp gbarecomp
+
+      - name: Package Studio
+        env:
+          DRAGON_VERSION: ${{ steps.rel_tag.outputs.tag }}
+        run: ./scripts/package-studio.sh
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: DragonRecomp-Studio-linux-x64
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+
+      - name: Attach to GitHub Release
+        if: github.repository == 'DerianCardenas/DragonRecomp-Public' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.rel_tag.outputs.tag }}
+          files: |
+            dist/*.tar.gz
+            dist/*.zip

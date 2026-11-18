@@ -10,6 +10,8 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#elif defined(__linux__) || defined(__unix__)
+#include <unistd.h>
 #endif
 
 namespace dragon::studio {
@@ -73,6 +75,15 @@ std::string find_font_file(const std::vector<std::string>& filenames) {
     }
     base_dirs.push_back("C:\\Windows\\Fonts");
 #elif defined(__linux__)
+    char buf[1024];
+    ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    if (len > 0) {
+        buf[len] = '\0';
+        const std::filesystem::path exe_dir = std::filesystem::path(buf).parent_path();
+        base_dirs.push_back(exe_dir / "assets" / "fonts");
+        base_dirs.push_back(exe_dir / ".." / "assets" / "fonts");
+        base_dirs.push_back(exe_dir / ".." / ".." / "assets" / "fonts");
+    }
     base_dirs.push_back("/usr/share/fonts/truetype/inter");
     base_dirs.push_back("/usr/share/fonts/truetype/montserrat");
     base_dirs.push_back("/usr/share/fonts/truetype/dejavu");

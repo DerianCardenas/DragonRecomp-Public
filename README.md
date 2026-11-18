@@ -2,7 +2,8 @@
 
 **Convierte tus juegos clásicos de NES, SNES, Game Boy / Game Boy Color y Game Boy Advance en juegos nativos para PC.**
 
-[![Descargar DragonRecomp Studio](https://img.shields.io/badge/Descargar%20Studio%20v1.0.0-Windows%20x64%20(Portable)-00b4d8?style=for-the-badge&logo=windows)](https://github.com/DerianCardenas/DragonRecomp-Public/releases/latest)
+[![Descargar Studio para Windows](https://img.shields.io/badge/Descargar%20Studio%20v1.0.0-Windows%20x64%20(Portable)-00b4d8?style=for-the-badge&logo=windows)](https://github.com/DerianCardenas/DragonRecomp-Public/releases/latest)
+[![Descargar Studio para Linux](https://img.shields.io/badge/Descargar%20Studio%20v1.0.0-Linux%20x64%20(Portable)-f77f00?style=for-the-badge&logo=linux)](https://github.com/DerianCardenas/DragonRecomp-Public/releases/latest)
 
 DragonRecomp es una herramienta que toma tus juegos favoritos de **NES (Nintendo Entertainment System)**, **Super Nintendo (SNES)**, **Game Boy / Game Boy Color (DMG / CGB)** y **Game Boy Advance (GBA)** y los recompila en programas nativos para **Windows** (`.exe`) y **Linux**, con rendimiento perfecto a 60 FPS, respuesta instantánea en los controles y sin la pesadez de los emuladores tradicionales.
 
@@ -72,7 +73,7 @@ Tienes dos formas muy sencillas de cargar tu juego:
 * O simplemente **arrastra el archivo de tu juego** desde tu carpeta y suéltalo dentro de la ventana del programa.
 
 ### Paso 3: Análisis y Recompilación automática
-El programa detectará al instante si se trata de un juego de NES, SNES o Game Boy / Game Boy Color, identificará el título, la memoria del cartucho, comprobará su compatibilidad y preparará la recompilación en segundos sin que tengas que configurar parámetros complicados.
+El programa detectará al instante si se trata de un juego de NES, SNES, Game Boy / Game Boy Color o Game Boy Advance, identificará el título, la memoria del cartucho, comprobará su compatibilidad y preparará la recompilación en segundos sin que tengas que configurar parámetros complicados.
 
 ### Paso 4: Jugar o Exportar
 * **▶ Probar juego**: Pulsa este botón para abrir y disfrutar tu juego inmediatamente en tu pantalla.
