@@ -74,12 +74,14 @@ jobs:
 
       - name: Setup MinGW-w64 & Ninja
         run: |
-          echo "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo "CC=C:/msys64/mingw64/bin/gcc.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "CXX=C:/msys64/mingw64/bin/g++.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           if (-not (Get-Command ninja -ErrorAction SilentlyContinue)) {
             choco install ninja -y
           }
+          if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) {
+            choco install mingw -y
+          }
+          echo "CC=gcc" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "CXX=g++" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DDRAGON_BUILD_STUDIO=OFF
