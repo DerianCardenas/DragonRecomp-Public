@@ -215,7 +215,7 @@ void StudioApp::render_sidebar() {
 }
 
 void StudioApp::render_topbar() {
-    const float topbar_h = 52.0f;
+    const float topbar_h = std::max(52.0f, ImGui::GetFrameHeight() + 20.0f);
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ThemeColors::Surface);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     ImGui::BeginChild("TopBar", ImVec2(0.0f, topbar_h), false,
@@ -231,9 +231,10 @@ void StudioApp::render_topbar() {
                 ImGui::GetColorU32(ThemeColors::Border), 1.0f);
 
     // Brand Title: "Dragon" + "Recomp" (Primary) + " Studio"
-    ImGui::SetCursorScreenPos(ImVec2(p0.x + 20.0f, p0.y + (topbar_h - 22.0f) * 0.5f));
     if (fonts_.h2)
         ImGui::PushFont(fonts_.h2);
+    const float title_h = ImGui::GetTextLineHeight();
+    ImGui::SetCursorScreenPos(ImVec2(p0.x + 20.0f, p0.y + (topbar_h - title_h) * 0.5f));
     ImGui::TextColored(ThemeColors::TextPrimary, "Dragon");
     ImGui::SameLine(0.0f, 0.0f);
     ImGui::TextColored(ThemeColors::Primary, "Recomp");
@@ -253,17 +254,18 @@ void StudioApp::render_topbar() {
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
     if (fonts_.small)
         ImGui::PushFont(fonts_.small);
+    const float small_h = ImGui::GetTextLineHeight();
     const float cta_w = ImGui::CalcTextSize(cta_label).x + 28.0f;
     const float pill_txt_w = ImGui::CalcTextSize(pill_text).x;
     if (fonts_.small)
         ImGui::PopFont();
 
-    const float cta_h = 32.0f;
+    const float cta_h = std::max(32.0f, small_h + 14.0f);
     const float cta_x = p1.x - cta_w - 20.0f;
     const float cta_y = p0.y + (topbar_h - cta_h) * 0.5f;
 
     // Status pill to the left of CTA button
-    const float pill_h = 28.0f;
+    const float pill_h = std::max(28.0f, small_h + 10.0f);
     const float pill_w = pill_txt_w + 34.0f;
     const float pill_x = cta_x - pill_w - 12.0f;
     const float pill_y = p0.y + (topbar_h - pill_h) * 0.5f;
@@ -275,8 +277,10 @@ void StudioApp::render_topbar() {
     dl->AddCircleFilled(ImVec2(pill_x + 13.0f, pill_y + pill_h * 0.5f), 3.5f,
                         ImGui::GetColorU32(ThemeColors::SuccessGreen));
     ImFont* pill_font = fonts_.small ? fonts_.small : ImGui::GetFont();
-    const ImVec2 pt_sz = pill_font->CalcTextSizeA(13.0f, FLT_MAX, 0.0f, pill_text);
-    dl->AddText(pill_font, 13.0f, ImVec2(pill_x + 22.0f, pill_y + (pill_h - pt_sz.y) * 0.5f),
+    const float pill_font_sz = pill_font->LegacySize;
+    const ImVec2 pt_sz = pill_font->CalcTextSizeA(pill_font_sz, FLT_MAX, 0.0f, pill_text);
+    dl->AddText(pill_font, pill_font_sz,
+                ImVec2(pill_x + 22.0f, pill_y + (pill_h - pt_sz.y) * 0.5f),
                 ImGui::GetColorU32(ThemeColors::TextMuted), pill_text);
 
     // Primary CTA Button
@@ -316,7 +320,7 @@ void StudioApp::render_recompiler() {
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
     }
 
-    const float side_w = 290.0f;
+    const float side_w = std::clamp(total_w * 0.28f, 260.0f, 360.0f);
     const float gap = 18.0f;
     const float left_w = std::max(380.0f, total_w - side_w - gap);
 
@@ -326,7 +330,9 @@ void StudioApp::render_recompiler() {
     ImGui::BeginChild("RecompLeft", ImVec2(left_w, 0.0f), false);
 
     // --- 1. Drop-Zone ---
-    const float drop_h = active_rom_.is_valid() ? 224.0f : 310.0f;
+    const float line_h = ImGui::GetTextLineHeight();
+    const float content_h = line_h * 5.0f + 78.0f;
+    const float drop_h = std::max(active_rom_.is_valid() ? 224.0f : 310.0f, content_h + 56.0f);
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ThemeColors::Surface);
     ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
     ImGui::BeginChild("DropZoneCard", ImVec2(0.0f, drop_h), false,
@@ -341,7 +347,6 @@ void StudioApp::render_recompiler() {
                             : ImGui::GetColorU32(ThemeColors::BorderStrong),
                      1.6f, 8.0f, 6.0f);
 
-    const float content_h = 152.0f;
     const float pad_top = std::max(20.0f, (drop_h - content_h) * 0.5f);
     ImGui::SetCursorPosY(pad_top);
 
@@ -517,7 +522,8 @@ void StudioApp::render_recompiler() {
             ImGui::PushStyleColor(ImGuiCol_ChildBg, ThemeColors::SurfaceAlt);
             ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 10.0f));
-            ImGui::BeginChild(m_labels[i], ImVec2(m_w, 64.0f), false, ImGuiWindowFlags_NoScrollbar);
+            ImGui::BeginChild(m_labels[i], ImVec2(m_w, 0.0f), ImGuiChildFlags_AutoResizeY,
+                              ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
             if (fonts_.small)
                 ImGui::PushFont(fonts_.small);
             ImGui::TextColored(ThemeColors::TextMuted, "%s", m_labels[i]);
@@ -828,7 +834,7 @@ void StudioApp::render_preferences() {
     ImGui::BeginChild("PreferencesScroll", ImVec2(0.0f, 0.0f), false);
 
     const float avail_w = ImGui::GetContentRegionAvail().x;
-    const float container_w = std::min(640.0f, avail_w);
+    const float container_w = std::min(avail_w, std::clamp(avail_w * 0.72f, 560.0f, 820.0f));
     const float offset_x = std::max(0.0f, (avail_w - container_w) * 0.5f);
 
     ImGui::SetCursorPosX(offset_x);
@@ -843,11 +849,12 @@ void StudioApp::render_preferences() {
         ImGui::Dummy(ImVec2(0.f, 6.f));
     };
 
-    auto begin_setting_card = [&](const char* id, float h) {
+    auto begin_setting_card = [&](const char* id) {
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ThemeColors::Surface);
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(18.0f, 14.0f));
-        ImGui::BeginChild(id, ImVec2(container_w, h), true,
+        ImGui::BeginChild(id, ImVec2(container_w, 0.0f),
+                          ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY,
                           ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
     };
 
@@ -862,14 +869,20 @@ void StudioApp::render_preferences() {
     // 1. COMPILACION
     // =========================================================================
     section_header("COMPILACION");
-    begin_setting_card("PrefCompCard", 122.0f);
+    begin_setting_card("PrefCompCard");
     {
+        const float inner_right = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x;
+
         // Row 1: Nucleos maximos
         ImGui::AlignTextToFramePadding();
         ImGui::TextColored(ThemeColors::TextPrimary, "Nucleos maximos");
-        ImGui::SameLine(container_w - 280.0f);
         int threads = static_cast<int>(draft_settings_.max_compile_threads);
-        ImGui::SetNextItemWidth(175.0f);
+        const float count_txt_w = ImGui::CalcTextSize("16 nucleos").x;
+        const float slider_w = std::clamp(container_w * 0.28f, 130.0f, 220.0f);
+        const float row1_ctrl_x = std::max(ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x + 12.0f,
+                                           inner_right - slider_w - 10.0f - count_txt_w);
+        ImGui::SameLine(row1_ctrl_x);
+        ImGui::SetNextItemWidth(slider_w);
         if (ImGui::SliderInt("##PrefThreads", &threads, 1, 16, "")) {
             draft_settings_.max_compile_threads = static_cast<unsigned int>(threads);
         }
@@ -883,11 +896,16 @@ void StudioApp::render_preferences() {
         // Row 2: Nivel de optimizacion
         ImGui::AlignTextToFramePadding();
         ImGui::TextColored(ThemeColors::TextPrimary, "Nivel de optimizacion");
-        ImGui::SameLine(container_w - 240.0f);
         const char* opt_items[] = {"-O0 (Sin opt.)", "-O1 (Rapido)", "-O2 (Balanceado)",
                                    "-O3 (Agresivo)"};
         int opt_idx = static_cast<int>(draft_settings_.opt_level);
-        ImGui::SetNextItemWidth(204.0f);
+        const float combo_w =
+            std::max(std::clamp(container_w * 0.34f, 195.0f, 250.0f),
+                     ImGui::CalcTextSize("-O2 (Balanceado)").x + ImGui::GetFrameHeight() + 24.0f);
+        const float row2_ctrl_x = std::max(ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x + 12.0f,
+                                           inner_right - combo_w);
+        ImGui::SameLine(row2_ctrl_x);
+        ImGui::SetNextItemWidth(combo_w);
         if (ImGui::Combo("##PrefOpt", &opt_idx, opt_items, IM_ARRAYSIZE(opt_items))) {
             draft_settings_.opt_level = static_cast<CompileOptLevel>(std::clamp(opt_idx, 0, 3));
         }
@@ -898,8 +916,14 @@ void StudioApp::render_preferences() {
     // 2. RUTAS (ONLY Directorio de exportacion — NO Directorio de biblioteca)
     // =========================================================================
     section_header("RUTAS");
-    begin_setting_card("PrefPathsCard", 72.0f);
+    begin_setting_card("PrefPathsCard");
     {
+        const float inner_x = ImGui::GetCursorPosX();
+        const float inner_w = ImGui::GetContentRegionAvail().x;
+        const float btn_w = std::max(98.0f, ImGui::CalcTextSize("Cambiar").x + 30.0f);
+        const float btn_h = std::max(32.0f, ImGui::GetFrameHeight() + 4.0f);
+        const float text_max_w = std::max(160.0f, inner_w - btn_w - 16.0f);
+
         const std::string exp_str = draft_settings_.export_directory.empty()
                                         ? SettingsStore::defaults().export_directory.string()
                                         : draft_settings_.export_directory.string();
@@ -907,15 +931,17 @@ void StudioApp::render_preferences() {
         ImGui::TextColored(ThemeColors::TextPrimary, "Directorio de exportacion");
         if (fonts_.small)
             ImGui::PushFont(fonts_.small);
+        ImGui::PushTextWrapPos(inner_x + text_max_w);
         ImGui::TextColored(ThemeColors::TextMuted, "%s", exp_str.c_str());
+        ImGui::PopTextWrapPos();
         if (fonts_.small)
             ImGui::PopFont();
         ImGui::EndGroup();
 
-        ImGui::SameLine(container_w - 134.0f);
+        ImGui::SameLine(inner_x + inner_w - btn_w);
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 4.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
-        if (ImGui::Button("Cambiar", ImVec2(98.0f, 32.0f))) {
+        if (ImGui::Button("Cambiar", ImVec2(btn_w, btn_h))) {
             open_pref_export_dir_dialog();
         }
         ImGui::PopStyleVar();
@@ -926,12 +952,15 @@ void StudioApp::render_preferences() {
     // 3. APARIENCIA
     // =========================================================================
     section_header("APARIENCIA");
-    begin_setting_card("PrefAppearanceCard", 122.0f);
+    begin_setting_card("PrefAppearanceCard");
     {
+        const float inner_right = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x;
+        const float toggle_w = 40.0f;
+
         // Row 1: Modo oscuro
         ImGui::AlignTextToFramePadding();
         ImGui::TextColored(ThemeColors::TextPrimary, "Modo oscuro");
-        ImGui::SameLine(container_w - 76.0f);
+        ImGui::SameLine(inner_right - toggle_w);
         if (toggle_switch("##PrefDarkMode", &draft_settings_.dark_mode)) {
             apply_studio_theme(draft_settings_.dark_mode, draft_settings_.accent_color,
                                display_scale_);
@@ -944,7 +973,8 @@ void StudioApp::render_preferences() {
         // Row 2: Color de acento (4 circular swatches)
         ImGui::AlignTextToFramePadding();
         ImGui::TextColored(ThemeColors::TextPrimary, "Color de acento");
-        ImGui::SameLine(container_w - 166.0f);
+        const float swatches_w = 4.0f * 24.0f + 3.0f * 10.0f;
+        ImGui::SameLine(inner_right - swatches_w);
 
         const ImVec4 swatch_cols[4] = {
             ImVec4(0.941f, 0.486f, 0.118f, 1.0f),  // Orange #F07C1E
@@ -977,12 +1007,15 @@ void StudioApp::render_preferences() {
     // 4. JUEGO
     // =========================================================================
     section_header("JUEGO");
-    begin_setting_card("PrefGameCard", 122.0f);
+    begin_setting_card("PrefGameCard");
     {
+        const float inner_right = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x;
+        const float toggle_w = 40.0f;
+
         // Row 1: Autoguardado de estado
         ImGui::AlignTextToFramePadding();
         ImGui::TextColored(ThemeColors::TextPrimary, "Autoguardado de estado");
-        ImGui::SameLine(container_w - 76.0f);
+        ImGui::SameLine(inner_right - toggle_w);
         toggle_switch("##PrefAutoSave", &draft_settings_.auto_save_state);
 
         ImGui::Dummy(ImVec2(0.f, 8.f));
@@ -992,7 +1025,7 @@ void StudioApp::render_preferences() {
         // Row 2: Filtro CRT por defecto
         ImGui::AlignTextToFramePadding();
         ImGui::TextColored(ThemeColors::TextPrimary, "Filtro CRT por defecto");
-        ImGui::SameLine(container_w - 76.0f);
+        ImGui::SameLine(inner_right - toggle_w);
         toggle_switch("##PrefDefaultCrt", &draft_settings_.default_crt_filter);
     }
     end_setting_card();
@@ -1004,6 +1037,10 @@ void StudioApp::render_preferences() {
     if (fonts_.body_bold)
         ImGui::PushFont(fonts_.body_bold);
 
+    const float action_h = std::max(38.0f, ImGui::GetFrameHeight() + 10.0f);
+    const float save_w = std::max(170.0f, ImGui::CalcTextSize("Guardar cambios").x + 36.0f);
+    const float reset_w = std::max(170.0f, ImGui::CalcTextSize("Restablecer todo").x + 36.0f);
+
     ImGui::PushStyleColor(ImGuiCol_Button, ThemeColors::Primary);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
                           ImVec4(std::min(ThemeColors::Primary.x * 1.1f, 1.f),
@@ -1011,7 +1048,7 @@ void StudioApp::render_preferences() {
                                  std::min(ThemeColors::Primary.z * 1.1f, 1.f), 1.f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ThemeColors::Primary);
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.f));
-    if (ImGui::Button("Guardar cambios", ImVec2(170.0f, 38.0f))) {
+    if (ImGui::Button("Guardar cambios", ImVec2(save_w, action_h))) {
         settings_ = draft_settings_;
         apply_settings(true);
         pref_status_message_ = "Cambios guardados correctamente.";
@@ -1023,7 +1060,7 @@ void StudioApp::render_preferences() {
     ImGui::PushStyleColor(ImGuiCol_Button, ThemeColors::SurfaceAlt);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ThemeColors::SurfaceHover);
     ImGui::PushStyleColor(ImGuiCol_Text, ThemeColors::TextPrimary);
-    if (ImGui::Button("Restablecer todo", ImVec2(160.0f, 38.0f))) {
+    if (ImGui::Button("Restablecer todo", ImVec2(reset_w, action_h))) {
         draft_settings_ = SettingsStore::defaults();
         settings_ = draft_settings_;
         apply_settings(true);
@@ -1040,6 +1077,7 @@ void StudioApp::render_preferences() {
         ImGui::TextColored(ThemeColors::SuccessGreen, "%s", pref_status_message_.c_str());
     }
 
+    ImGui::Dummy(ImVec2(0.f, 12.f));
     ImGui::EndGroup();
     ImGui::EndChild();
 }

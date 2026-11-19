@@ -898,7 +898,8 @@ void StudioApp::render_package_modal() {
 
             // Framed wrap box for the full path
             ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.08f, 0.10f, 0.14f, 1.0f));
-            ImGui::BeginChild("PathDisplayBox", ImVec2(0, 48.0f), true,
+            ImGui::BeginChild("PathDisplayBox", ImVec2(0.0f, 0.0f),
+                              ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY,
                               ImGuiWindowFlags_NoScrollbar);
             ImGui::PushTextWrapPos(0.0f);
             ImGui::TextColored(ThemeColors::AccentCyan, "%s",

@@ -69,3 +69,4 @@ de `specs/003-ci-e2e-verificacion/tasks.md` (Tarea 5, Tarea 6.3/6.4).
 | A3 | `gbarecomp` static recompiler (ARM/Thumb CFG + multi-case C99 emitter) | `gba_recomp_unit_tests` (veneers, `_call_via_rX`, switch tables, IWRAM, IRQ) pass | done |
 | A4 | GBA DirectSound DMA FIFO + PSG APU + Save States (`DRST`) | `gba_apu_unit_tests` pass; 48 kHz stereo audio & `.sav` / F5/F7 states | done |
 | A5 | DragonRecomp Studio integration for GBA | Drag & drop `.gba`, auto-pipeline, fallback learning, Linux/Windows packager | done |
+| M11 | Rediseño Obsidian UI, Biblioteca Portable y Preferencias (Specs 004 y 005) | Biblioteca basada en portables con importador de recompilados y ejecución directa por SO, rediseño Obsidian UI (tema claro/oscuro + 4 acentos), preferencias persistentes (`settings.toml`, 2 núcleos y `-O1` por defecto, autoguardado `--save-state`), adaptación responsiva multi-resolución/HiDPI y fix de PPU GB | done |

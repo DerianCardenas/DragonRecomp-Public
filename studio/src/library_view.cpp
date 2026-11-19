@@ -442,7 +442,7 @@ void StudioApp::render_library() {
     library_console_tab_ = std::clamp(library_console_tab_, 0, 3);
 
     const float total_w = ImGui::GetContentRegionAvail().x;
-    const float inspector_w = 280.0f;
+    const float inspector_w = std::clamp(total_w * 0.24f, 260.0f, 360.0f);
     const float gap = 18.0f;
     const float left_w = std::max(320.0f, total_w - inspector_w - gap);
 
@@ -452,15 +452,15 @@ void StudioApp::render_library() {
     ImGui::BeginChild("LibraryLeft", ImVec2(left_w, 0.0f), false);
 
     if (!library_notice_.empty()) {
-        const float notice_h = 40.0f;
+        const float text_h = ImGui::GetTextLineHeight();
+        const float notice_h = std::max(40.0f, text_h + 18.0f);
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ThemeColors::SurfaceAlt);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.0f, 0.0f));
         ImGui::BeginChild("LibNotice", ImVec2(0, notice_h), true,
                           ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-        const float text_h = ImGui::GetTextLineHeight();
         ImGui::SetCursorPosY((notice_h - text_h) * 0.5f);
         ImGui::TextColored(ThemeColors::AccentCyan, "%s", library_notice_.c_str());
-        const float close_sz = 24.0f;
+        const float close_sz = std::max(24.0f, text_h + 4.0f);
         ImGui::SetCursorPos(
             ImVec2(ImGui::GetWindowWidth() - close_sz - 10.0f, (notice_h - close_sz) * 0.5f));
         if (ImGui::Button("✕##DismissNotice", ImVec2(close_sz, close_sz))) {
@@ -472,16 +472,14 @@ void StudioApp::render_library() {
         ImGui::Spacing();
     }
 
-    // Console Tabs Bar
+    // Console Tabs Bar (auto-wraps gracefully on narrower windows)
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 7.0f));
     if (fonts_.body_bold)
         ImGui::PushFont(fonts_.body_bold);
 
+    const float tabs_max_x = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
     for (size_t t = 0; t < 4; ++t) {
-        if (t > 0) {
-            ImGui::SameLine(0, 8.0f);
-        }
         const bool active = (library_console_tab_ == static_cast<int>(t));
         size_t count = 0;
         for (const auto& k : console_tabs[t].keys) {
@@ -489,6 +487,14 @@ void StudioApp::render_library() {
         }
         char tab_buf[96];
         std::snprintf(tab_buf, sizeof(tab_buf), "%s  %zu", console_tabs[t].label, count);
+
+        if (t > 0) {
+            const float next_w = ImGui::CalcTextSize(tab_buf).x + 28.0f;
+            const float last_right = ImGui::GetItemRectMax().x;
+            if (last_right + 8.0f + next_w <= tabs_max_x) {
+                ImGui::SameLine(0, 8.0f);
+            }
+        }
 
         if (active) {
             ImGui::PushStyleColor(ImGuiCol_Button, ThemeColors::Primary);
@@ -548,7 +554,7 @@ void StudioApp::render_library() {
         std::min(210.0f, (grid_avail_w - spacing_x * static_cast<float>(cols - 1)) /
                              static_cast<float>(cols));
     const ImVec2 img_size(card_w, card_w * (4.0f / 3.0f));
-    const float footer_h = 38.0f;
+    const float footer_h = std::max(38.0f, ImGui::GetTextLineHeight() * 2.15f + 8.0f);
 
     ImGui::PushID(ctab.label);
     for (size_t i = 0; i < items.size(); ++i) {

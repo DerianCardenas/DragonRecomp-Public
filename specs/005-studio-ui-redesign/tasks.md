@@ -62,9 +62,12 @@
 
 ---
 
-## Fase 5: Pruebas y Validación
+## Fase 5: Pruebas, Responsividad Multi-Resolución y Validación
 
 - [x] **5.1 Tests Unitarios (`studio/tests/studio_unit_tests.cpp`)**
   - [x] Añadido `test_studio_settings()` y pruebas de `CompileOptLevel` (`-O0..-O3`) y `Pipeline::compile_log()`.
-- [x] **5.2 Compilación y `ctest`**
-  - [x] Compilación limpia sin warnings y 31/31 tests en verde.
+- [x] **5.2 Adaptación Multi-Resolución / HiDPI (`studio_views.cpp`, `library_view.cpp`, `app.cpp`)**
+  - [x] Tarjetas de Preferencias (`COMPILACION`, `RUTAS`, `APARIENCIA`, `JUEGO`), métricas del Recompilador y `PathDisplayBox` convertidas a `ImGuiChildFlags_AutoResizeY` (cero recortes verticales en escalas 1.25x/1.5x).
+  - [x] Alineación derecha dinámica mediante `GetContentRegionAvail()` / `CalcTextSize()`, anchos proporcionales de paneles laterales (`LibraryInspector`, `RecompSide`), salto de línea automático en pestañas de consolas y alturas dinámicas en `TopBar` y pies de carátula.
+- [x] **5.3 Compilación y `ctest`**
+  - [x] Compilación limpia sin warnings y 31/31 tests en verde en Linux y Windows.
