@@ -464,6 +464,9 @@ bool Packager::bundle_runtime_sources(const std::filesystem::path& dest_dir,
         platform_str = "gb";
     } else if (options.rom_info.platform == RomPlatform::GameBoyAdvance) {
         platform_str = "gba";
+    } else if (options.rom_info.platform == RomPlatform::MasterSystem ||
+               options.rom_info.platform == RomPlatform::GameGear) {
+        platform_str = "sms";
     }
 
     try {
@@ -522,9 +525,12 @@ bool Packager::bundle_runtime_sources(const std::filesystem::path& dest_dir,
                     const auto fname = entry.path().filename().string();
                     if (fname != "nes_runner_main.cpp" && fname != "snes_runner_main.cpp" &&
                         fname != "gb_runner_main.cpp" && fname != "gba_runner_main.cpp" &&
+                        fname != "sms_runner_main.cpp" &&
                         fname != "nes_recomp_game_main.cpp" &&
                         fname != "snes_recomp_game_main.cpp" &&
-                        fname != "gb_recomp_game_main.cpp" && fname != "gba_recomp_game_main.cpp") {
+                        fname != "gb_recomp_game_main.cpp" &&
+                        fname != "gba_recomp_game_main.cpp" &&
+                        fname != "sms_recomp_game_main.cpp") {
                         std::filesystem::copy_file(
                             entry.path(), dest_dir / "src" / "runtime" / entry.path().filename(),
                             std::filesystem::copy_options::overwrite_existing);
@@ -542,6 +548,9 @@ bool Packager::bundle_runtime_sources(const std::filesystem::path& dest_dir,
             main_name = "gb_recomp_game_main.cpp";
         } else if (options.rom_info.platform == RomPlatform::GameBoyAdvance) {
             main_name = "gba_recomp_game_main.cpp";
+        } else if (options.rom_info.platform == RomPlatform::MasterSystem ||
+                   options.rom_info.platform == RomPlatform::GameGear) {
+            main_name = "sms_recomp_game_main.cpp";
         }
         const auto main_cpp = repo / platform_str / "runtime" / "src" / main_name;
         if (std::filesystem::exists(main_cpp)) {

@@ -765,6 +765,116 @@ void test_studio_settings() {
     std::cout << "  Studio settings test passed!\n";
 }
 
+void test_detect_rom_sms_and_gg() {
+    std::cout << "[Test] detect_rom Sega Master System & Game Gear...\n";
+    const auto temp_dir = std::filesystem::temp_directory_path() / "dragon_test_detect_sms";
+    std::filesystem::create_directories(temp_dir);
+
+    // Synthetic 32 KiB SMS ROM with "TMR SEGA" header (Export region = 4)
+    {
+        std::vector<uint8_t> sms(32768, 0x00U);
+        std::memcpy(sms.data() + 0x7FF0, "TMR SEGA", 8);
+        sms[0x7FFF] = 0x4CU;  // Region 4 = SMS Export
+        const auto sms_path = temp_dir / "Sonic_Test.sms";
+        std::ofstream out(sms_path, std::ios::binary);
+        out.write(reinterpret_cast<const char*>(sms.data()), static_cast<std::streamsize>(sms.size()));
+        out.close();
+
+        const RomInfo info = detect_rom(sms_path);
+        assert(info.is_valid());
+        assert(info.platform == RomPlatform::MasterSystem);
+        assert(info.rom_size_kb == 32U);
+        assert(!info.sha1.empty());
+    }
+
+    // Synthetic 32 KiB Game Gear ROM (Region 6 = GG Export)
+    {
+        std::vector<uint8_t> gg(32768, 0x00U);
+        std::memcpy(gg.data() + 0x7FF0, "TMR SEGA", 8);
+        gg[0x7FFF] = 0x6CU;  // Region 6 = GG Export
+        const auto gg_path = temp_dir / "Shinobi_Test.gg";
+        std::ofstream out(gg_path, std::ios::binary);
+        out.write(reinterpret_cast<const char*>(gg.data()), static_cast<std::streamsize>(gg.size()));
+        out.close();
+
+        const RomInfo info = detect_rom(gg_path);
+        assert(info.is_valid());
+        assert(info.platform == RomPlatform::GameGear);
+        assert(info.rom_size_kb == 32U);
+    }
+
+    std::filesystem::remove_all(temp_dir);
+    std::cout << "  SMS & Game Gear ROM detection passed!\n";
+}
+
+void test_pipeline_compile_sms() {
+    std::cout << "[Test] pipeline compile_c_to_binary SMS/GG...\n";
+    const auto temp_dir = std::filesystem::temp_directory_path() / "dragon_test_pipeline_compile_sms";
+    std::filesystem::remove_all(temp_dir);
+    std::filesystem::create_directories(temp_dir);
+
+    RomInfo sms_info;
+    sms_info.platform = RomPlatform::MasterSystem;
+    sms_info.clean_name = "Sonic SMS Test";
+    sms_info.file_path = "roms/sms/sonic.sms";
+    sms_info.sha1 = "1234567890abcdef1234567890abcdef12345678";
+    sms_info.rom_size_kb = 128;
+
+    const auto gen_dir = temp_dir / "generated";
+    std::filesystem::create_directories(gen_dir);
+
+    {
+        std::ofstream h(gen_dir / "recomp_functions.h");
+        h << "#pragma once\n"
+          << "#include <stddef.h>\n"
+          << "#include \"sms/cpu_state.h\"\n"
+          << "#ifdef __cplusplus\nextern \"C\" {\n#endif\n"
+          << "void func_00_0000(SmsCpuState* cpu);\n"
+          << "extern const SmsRecompFuncEntry kRecompDispatchTable[];\n"
+          << "extern const size_t kRecompDispatchTableCount;\n"
+          << "#ifdef __cplusplus\n}\n#endif\n";
+    }
+    {
+        std::ofstream c(gen_dir / "recomp_all.c");
+        c << "#include \"recomp_functions.h\"\n"
+          << "void func_00_0000(SmsCpuState* cpu) { cpu->a = 0x42U; cpu->cycles += 7U; }\n"
+          << "const SmsRecompFuncEntry kRecompDispatchTable[] = {\n"
+          << "    { 0x0000U, 0x00U, func_00_0000 }\n"
+          << "};\n"
+          << "const size_t kRecompDispatchTableCount = 1U;\n";
+    }
+
+    Pipeline pipeline;
+    const auto toml_path = temp_dir / "game_sms.toml";
+    assert(pipeline.generate_initial_toml(sms_info, toml_path));
+    assert(std::filesystem::exists(toml_path));
+
+    const auto out_bin = temp_dir / "game_sms_bin";
+    bool compiled = pipeline.compile_c_to_binary(sms_info, gen_dir, out_bin);
+    if (!compiled) {
+        std::cerr << "SMS Compilation failed: " << pipeline.error_message() << "\n";
+    }
+    assert(compiled);
+    assert(std::filesystem::exists(out_bin));
+
+    PackageOptions opts;
+    opts.source_binary = out_bin;
+    opts.generated_dir = gen_dir;
+    opts.rom_info = sms_info;
+    opts.output_directory = temp_dir / "exported";
+    opts.include_launcher_script = true;
+    opts.include_desktop_entry = true;
+    opts.bundle_standalone_cmake = true;
+
+    PackageResult res = Packager::create_portable_package(opts);
+    assert(res.success);
+    assert(std::filesystem::exists(res.package_path / "CMakeLists.txt"));
+    assert(std::filesystem::exists(res.package_path / "include" / "sms" / "bus.h"));
+    std::cout << "  SMS native compilation & portable package passed!\n";
+
+    std::filesystem::remove_all(temp_dir);
+}
+
 }  // namespace
 
 int main() {
@@ -772,6 +882,7 @@ int main() {
     test_detect_rom_snes();
     test_detect_rom_gb_and_gbc();
     test_detect_rom_gba();
+    test_detect_rom_sms_and_gg();
     test_detect_rom_invalid();
     test_packager();
     test_packager_windows();
@@ -782,6 +893,7 @@ int main() {
     test_pipeline_compile_snes();
     test_pipeline_compile_gb();
     test_pipeline_compile_gba();
+    test_pipeline_compile_sms();
     test_diagnose_and_repair();
     std::cout << "All studio unit tests passed!\n";
     return 0;

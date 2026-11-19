@@ -46,6 +46,10 @@ ImVec4 platform_color(const std::string& key) {
         return ImVec4(0.10f, 0.62f, 0.55f, 1.f);
     if (key == "gba")
         return ImVec4(0.17f, 0.37f, 0.70f, 1.f);
+    if (key == "sms")
+        return ImVec4(0.14f, 0.45f, 0.85f, 1.f);
+    if (key == "gg")
+        return ImVec4(0.16f, 0.56f, 0.76f, 1.f);
     return ImVec4(0.35f, 0.38f, 0.45f, 1.f);
 }
 
@@ -60,6 +64,10 @@ const char* platform_short(const std::string& key) {
         return "GBC";
     if (key == "gba")
         return "GBA";
+    if (key == "sms")
+        return "SMS";
+    if (key == "gg")
+        return "GG";
     return "?";
 }
 
@@ -74,6 +82,10 @@ const char* platform_full_name(const std::string& key) {
         return "Game Boy Color";
     if (key == "gba")
         return "Game Boy Advance";
+    if (key == "sms")
+        return "Sega Master System";
+    if (key == "gg")
+        return "Sega Game Gear";
     return "Desconocida";
 }
 
@@ -438,8 +450,10 @@ void StudioApp::render_library() {
         {"Super Nintendo", "snes", {"snes"}},
         {"Game Boy / Color", "gb", {"gb", "gbc"}},
         {"Game Boy Advance", "gba", {"gba"}},
+        {"Sega MS / GG", "sms", {"sms", "gg"}},
     };
-    library_console_tab_ = std::clamp(library_console_tab_, 0, 3);
+    constexpr size_t kConsoleTabCount = sizeof(console_tabs) / sizeof(console_tabs[0]);
+    library_console_tab_ = std::clamp(library_console_tab_, 0, static_cast<int>(kConsoleTabCount) - 1);
 
     const float total_w = ImGui::GetContentRegionAvail().x;
     const float inspector_w = std::clamp(total_w * 0.24f, 260.0f, 360.0f);
@@ -479,7 +493,7 @@ void StudioApp::render_library() {
         ImGui::PushFont(fonts_.body_bold);
 
     const float tabs_max_x = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-    for (size_t t = 0; t < 4; ++t) {
+    for (size_t t = 0; t < kConsoleTabCount; ++t) {
         const bool active = (library_console_tab_ == static_cast<int>(t));
         size_t count = 0;
         for (const auto& k : console_tabs[t].keys) {

@@ -30,6 +30,7 @@ REQUIRED_TARGETS=(
     "snes/recompiler/snesrecomp"
     "gb/recompiler/gbrecomp"
     "gba/recompiler/gbarecomp"
+    "sms/recompiler/smsrecomp"
 )
 
 NEED_BUILD=0
@@ -42,7 +43,7 @@ done
 
 if [ "${NEED_BUILD}" -eq 1 ]; then
     echo "Compilando dependencias requeridas..."
-    cmake --build "${BUILD_DIR}" --target dragon-studio nesrecomp snesrecomp gbrecomp gbarecomp
+    cmake --build "${BUILD_DIR}" --target dragon-studio nesrecomp snesrecomp gbrecomp gbarecomp smsrecomp
 fi
 
 # 2. Preparar directorio limpio de empaquetado
@@ -56,12 +57,14 @@ cp "${BUILD_DIR}/nes/recompiler/nesrecomp" "${PACKAGE_DIR}/nesrecomp"
 cp "${BUILD_DIR}/snes/recompiler/snesrecomp" "${PACKAGE_DIR}/snesrecomp"
 cp "${BUILD_DIR}/gb/recompiler/gbrecomp" "${PACKAGE_DIR}/gbrecomp"
 cp "${BUILD_DIR}/gba/recompiler/gbarecomp" "${PACKAGE_DIR}/gbarecomp"
+cp "${BUILD_DIR}/sms/recompiler/smsrecomp" "${PACKAGE_DIR}/smsrecomp"
 
 chmod +x "${PACKAGE_DIR}/dragon-studio" \
          "${PACKAGE_DIR}/nesrecomp" \
          "${PACKAGE_DIR}/snesrecomp" \
          "${PACKAGE_DIR}/gbrecomp" \
-         "${PACKAGE_DIR}/gbarecomp"
+         "${PACKAGE_DIR}/gbarecomp" \
+         "${PACKAGE_DIR}/smsrecomp"
 
 if command -v strip >/dev/null 2>&1; then
     echo "Reduciendo simbolos debug con strip..."
@@ -69,7 +72,8 @@ if command -v strip >/dev/null 2>&1; then
                            "${PACKAGE_DIR}/nesrecomp" \
                            "${PACKAGE_DIR}/snesrecomp" \
                            "${PACKAGE_DIR}/gbrecomp" \
-                           "${PACKAGE_DIR}/gbarecomp" 2>/dev/null || true
+                           "${PACKAGE_DIR}/gbarecomp" \
+                           "${PACKAGE_DIR}/smsrecomp" 2>/dev/null || true
 fi
 
 # 4. Incluir libSDL3.so.0 portable
@@ -124,15 +128,15 @@ cat > "${PACKAGE_DIR}/dragon-studio.desktop" << EOF
 Version=1.0
 Type=Application
 Name=DragonRecomp Studio
-GenericName=NES, SNES, GB & GBA Static Recompiler
-Comment=Drag & Drop static recompilation of NES, SNES, Game Boy, and GBA ROMs to native Linux executables
+GenericName=NES, SNES, GB, GBA & SMS/GG Static Recompiler
+Comment=Drag & Drop static recompilation of NES, SNES, Game Boy, GBA, Master System, and Game Gear ROMs to native Linux executables
 Exec=./run-studio.sh %f
 Icon=./assets/icons/dragon-studio.png
 Terminal=false
 StartupNotify=true
 Categories=Game;Emulator;
-Keywords=NES;SNES;GameBoy;GBA;Recompiler;Dragon;Emulator;Gaming;
-MimeType=application/x-nes-rom;application/x-snes-rom;application/x-gameboy-rom;application/x-gba-rom;
+Keywords=NES;SNES;GameBoy;GBA;MasterSystem;GameGear;SMS;Recompiler;Dragon;Emulator;Gaming;
+MimeType=application/x-nes-rom;application/x-snes-rom;application/x-gameboy-rom;application/x-gba-rom;application/x-sms-rom;application/x-gamegear-rom;
 EOF
 
 # 8. Crear README.txt
@@ -141,18 +145,20 @@ cat > "${PACKAGE_DIR}/README.txt" << EOF
   DragonRecomp Studio ${VERSION} — Paquete Portable para Linux (x86_64)
 ======================================================================
 
-Convierte tus juegos clasicos de NES, SNES, Game Boy / Game Boy Color
-y Game Boy Advance en programas nativos de alto rendimiento para PC.
+Convierte tus juegos clasicos de NES, SNES, Game Boy / Game Boy Color,
+Game Boy Advance y Sega Master System / Game Gear en programas nativos
+de alto rendimiento para PC.
 
 Consolas soportadas:
   - Nintendo Entertainment System (NES / 6502)
   - Super Nintendo (SNES / 65816)
   - Game Boy & Game Boy Color (Sharp SM83)
   - Game Boy Advance (ARM7TDMI ARMv4T + Thumb)
+  - Sega Master System & Game Gear (Zilog Z80 / VDP Mode 4 / SN76489 PSG)
 
 COMO EJECUTAR EN LINUX:
   1. Haz doble clic en 'run-studio.sh' (o ejecuta './run-studio.sh' en la terminal).
-  2. Arrastra y suelta tu ROM (.nes, .sfc, .smc, .gb, .gbc, .gba) en la ventana.
+  2. Arrastra y suelta tu ROM (.nes, .sfc, .smc, .gb, .gbc, .gba, .sms, .gg) en la ventana.
   3. Haz clic en "Recompilar y Ejecutar" para jugar a 60 FPS fluidos con
      sincronizacion de audio, guardados SRAM (.sav) y save states (F5 / F7).
 

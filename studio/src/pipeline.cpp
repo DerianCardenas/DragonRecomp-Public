@@ -66,14 +66,17 @@ std::filesystem::path find_tool(const std::string& name) {
             exe_dir / "snes" / "recompiler" / n,
             exe_dir / "gb" / "recompiler" / n,
             exe_dir / "gba" / "recompiler" / n,
+            exe_dir / "sms" / "recompiler" / n,
             exe_dir / ".." / "nes" / "recompiler" / n,
             exe_dir / ".." / "snes" / "recompiler" / n,
             exe_dir / ".." / "gb" / "recompiler" / n,
             exe_dir / ".." / "gba" / "recompiler" / n,
+            exe_dir / ".." / "sms" / "recompiler" / n,
             std::filesystem::current_path() / "build" / "nes" / "recompiler" / n,
             std::filesystem::current_path() / "build" / "snes" / "recompiler" / n,
             std::filesystem::current_path() / "build" / "gb" / "recompiler" / n,
             std::filesystem::current_path() / "build" / "gba" / "recompiler" / n,
+            std::filesystem::current_path() / "build" / "sms" / "recompiler" / n,
         };
         for (const auto& p : candidates) {
             if (std::filesystem::exists(p)) {
@@ -803,6 +806,8 @@ bool Pipeline::generate_initial_toml(const RomInfo& rom, const std::filesystem::
         platform_subdir = "gb";
     } else if (rom.platform == RomPlatform::GameBoyAdvance) {
         platform_subdir = "gba";
+    } else if (rom.platform == RomPlatform::MasterSystem || rom.platform == RomPlatform::GameGear) {
+        platform_subdir = "sms";
     }
     const auto games_dir = repo_root / platform_subdir / "games";
     if (std::filesystem::exists(games_dir)) {
@@ -967,6 +972,27 @@ bool Pipeline::generate_initial_toml(const RomInfo& rom, const std::filesystem::
             << "addr  = 0x08000000\n"
             << "thumb = false\n"
             << "name  = \"ROM_Entry\"\n\n";
+    } else if (rom.platform == RomPlatform::MasterSystem || rom.platform == RomPlatform::GameGear) {
+        out << "[game]\n"
+            << "name     = \"" << toml_rom_name << "\"\n"
+            << "platform = \"" << (rom.platform == RomPlatform::GameGear ? "gg" : "sms") << "\"\n"
+            << "rom      = \"" << toml_rom_path << "\"\n"
+            << "sha1     = \"" << rom.sha1 << "\"\n\n"
+            << "[output]\n"
+            << "dir         = \"generated\"\n"
+            << "split_every = 200\n\n"
+            << "[[entry_points]]\n"
+            << "addr = 0x0000\n"
+            << "bank = 0x00\n"
+            << "name = \"Reset\"\n\n"
+            << "[[entry_points]]\n"
+            << "addr = 0x0038\n"
+            << "bank = 0x00\n"
+            << "name = \"VDP_IRQ\"\n\n"
+            << "[[entry_points]]\n"
+            << "addr = 0x0066\n"
+            << "bank = 0x00\n"
+            << "name = \"Pause_NMI\"\n\n";
     }
 
     return true;
@@ -992,6 +1018,10 @@ bool Pipeline::compile_c_to_binary(const RomInfo& rom, const std::filesystem::pa
         runtime_dir = "gba";
         runtime_lib_name = "libgba_runtime.a";
         main_cpp_name = "gba_recomp_game_main.cpp";
+    } else if (rom.platform == RomPlatform::MasterSystem || rom.platform == RomPlatform::GameGear) {
+        runtime_dir = "sms";
+        runtime_lib_name = "libsms_runtime.a";
+        main_cpp_name = "sms_recomp_game_main.cpp";
     }
     const auto main_cpp = repo_root / runtime_dir / "runtime" / "src" / main_cpp_name;
     const auto runtime_inc = repo_root / runtime_dir / "runtime" / "include";
@@ -1284,6 +1314,9 @@ bool Pipeline::compile_windows_binary(const RomInfo& rom, const std::filesystem:
     } else if (rom.platform == RomPlatform::GameBoyAdvance) {
         runtime_dir = "gba";
         main_cpp_name = "gba_recomp_game_main.cpp";
+    } else if (rom.platform == RomPlatform::MasterSystem || rom.platform == RomPlatform::GameGear) {
+        runtime_dir = "sms";
+        main_cpp_name = "sms_recomp_game_main.cpp";
     }
     const auto main_cpp = repo_root / runtime_dir / "runtime" / "src" / main_cpp_name;
     const auto runtime_inc = repo_root / runtime_dir / "runtime" / "include";
@@ -1398,6 +1431,10 @@ void Pipeline::run_worker(RomInfo rom) {
     } else if (rom.platform == RomPlatform::GameBoyAdvance) {
         append_log(LogLevel::Message, "GBA " + (rom.game_code.empty() ? "AGB" : rom.game_code) +
                                           " (" + rom.save_type_str + ")");
+    } else if (rom.platform == RomPlatform::MasterSystem || rom.platform == RomPlatform::GameGear) {
+        append_log(LogLevel::Message,
+                   std::string(rom.platform == RomPlatform::GameGear ? "Game Gear" : "Master System") +
+                       " (" + std::to_string(rom.rom_size_kb) + " KB)");
     } else {
         append_log(LogLevel::Message,
                    rom.mbc_type_str + " (" + std::to_string(rom.rom_size_kb) + " KB)");
@@ -1464,6 +1501,8 @@ void Pipeline::run_worker(RomInfo rom) {
         tool_name = "gbrecomp";
     } else if (rom.platform == RomPlatform::GameBoyAdvance) {
         tool_name = "gbarecomp";
+    } else if (rom.platform == RomPlatform::MasterSystem || rom.platform == RomPlatform::GameGear) {
+        tool_name = "smsrecomp";
     }
     const auto tool_path = find_tool(tool_name);
 
@@ -1965,6 +2004,12 @@ bool Pipeline::optimize_and_recompile() {
             if (ev.addr >= 0x8000U) {
                 continue;
             }
+        } else if (current_rom.platform == RomPlatform::MasterSystem ||
+                   current_rom.platform == RomPlatform::GameGear) {
+            // SMS/GG entry points must be in ROM address space ($0000-$BFFF)
+            if (ev.addr >= 0xC000U) {
+                continue;
+            }
         } else if (current_rom.platform == RomPlatform::GameBoyAdvance) {
             // GBA entry points must be in Game Pak ROM address space ($08000000-$0DFFFFFF)
             if (ev.addr < 0x08000000U || ev.addr >= 0x0E000000U) {
@@ -2415,6 +2460,9 @@ DiagnosticResult Pipeline::diagnose_and_repair(DiagnosticSymptom symptom) {
             fb_name = "gb_feedback.toml";
         } else if (current_rom.platform == RomPlatform::GameBoyAdvance) {
             fb_name = "gba_feedback.toml";
+        } else if (current_rom.platform == RomPlatform::MasterSystem ||
+                   current_rom.platform == RomPlatform::GameGear) {
+            fb_name = "sms_feedback.toml";
         }
         const auto console_toml = get_user_knowledge_dir() / fb_name;
         std::ofstream fb(console_toml, std::ios::app);

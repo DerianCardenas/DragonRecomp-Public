@@ -1,0 +1,20 @@
+# Sega Master System & Game Gear Hardware Knowledge Base for DragonRecomp
+[platform]
+name = "Sega Master System / Game Gear"
+cpu = "Zilog Z80A"
+clock_hz = 3579545
+scanlines_ntsc = 262
+cycles_per_scanline = 228
+vdp = "TMS9918A Mode 4 (315-5124 / 315-5246 / 315-5378)"
+audio = "SN76489 PSG (16-bit LFSR tap 0x0009)"
+reference = "https://www.smspower.org/Development/Documents"
+
+[vectors]
+reset = 0x0000
+irq_im1 = 0x0038
+nmi_pause = 0x0066
+
+[mappers]
+sega = "Paging at $FFFC-$FFFF with fixed first 1 KiB ($0000-$03FF)"
+codemasters = "Paging at $0000, $4000, $8000 (no fixed 1 KiB)"
+korean = "Slot 2 paging at $A000"

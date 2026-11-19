@@ -1,11 +1,11 @@
 # 🐉 DragonRecomp
 
-**Convierte tus juegos clásicos de NES, SNES, Game Boy / Game Boy Color y Game Boy Advance en juegos nativos para PC.**
+**Convierte tus juegos clásicos de NES, SNES, Game Boy / Game Boy Color, Game Boy Advance y Sega Master System / Game Gear en juegos nativos para PC.**
 
 [![Descargar Studio para Windows](https://img.shields.io/badge/Descargar%20Studio%20v1.0.0-Windows%20x64%20(Portable)-00b4d8?style=for-the-badge&logo=windows)](https://github.com/DerianCardenas/DragonRecomp-Public/releases/latest)
 [![Descargar Studio para Linux](https://img.shields.io/badge/Descargar%20Studio%20v1.0.0-Linux%20x64%20(Portable)-f77f00?style=for-the-badge&logo=linux)](https://github.com/DerianCardenas/DragonRecomp-Public/releases/latest)
 
-DragonRecomp es una herramienta que toma tus juegos favoritos de **NES (Nintendo Entertainment System)**, **Super Nintendo (SNES)**, **Game Boy / Game Boy Color (DMG / CGB)** y **Game Boy Advance (GBA)** y los recompila en programas nativos para **Windows** (`.exe`) y **Linux**, con rendimiento perfecto a 60 FPS, respuesta instantánea en los controles y sin la pesadez de los emuladores tradicionales.
+DragonRecomp es una herramienta que toma tus juegos favoritos de **NES (Nintendo Entertainment System)**, **Super Nintendo (SNES)**, **Game Boy / Game Boy Color (DMG / CGB)**, **Game Boy Advance (GBA)** y **Sega Master System / Game Gear (SMS / GG)** y los recompila en programas nativos para **Windows** (`.exe`) y **Linux**, con rendimiento perfecto a 60 FPS, respuesta instantánea en los controles y sin la pesadez de los emuladores tradicionales.
 
 ---
 
@@ -14,9 +14,9 @@ DragonRecomp es una herramienta que toma tus juegos favoritos de **NES (Nintendo
 >
 > **DragonRecomp NO incluye, NO aloja ni distribuye ninguna ROM ni archivos de juegos con derechos de autor.**
 >
-> Para utilizar esta herramienta y generar ejecutables de tus juegos, **es obligatorio que cuentes con una copia digital legal y de respaldo obtenida de tu propio cartucho físico original** de NES, Super Nintendo, Game Boy / Game Boy Color o Game Boy Advance:
+> Para utilizar esta herramienta y generar ejecutables de tus juegos, **es obligatorio que cuentes con una copia digital legal y de respaldo obtenida de tu propio cartucho físico original** de NES, Super Nintendo, Game Boy / Game Boy Color, Game Boy Advance o Sega Master System / Game Gear:
 >
-> - **Formatos admitidos**: Archivos `.nes` (para NES), `.sfc` o `.smc` (para Super Nintendo), `.gb` o `.gbc` (para Game Boy y Game Boy Color), y `.gba` (para Game Boy Advance).
+> - **Formatos admitidos**: Archivos `.nes` (para NES), `.sfc` o `.smc` (para Super Nintendo), `.gb` o `.gbc` (para Game Boy y Game Boy Color), `.gba` (para Game Boy Advance) y `.sms` o `.gg` (para Sega Master System y Game Gear).
 > - DragonRecomp actúa únicamente como un compilador y reproductor de hardware fiel; no provee material protegido por copyright.
 > - **Esto también aplica a los paquetes exportados**: el ejecutable recompilado solo contiene la lógica del juego traducida a código nativo — los gráficos y el audio los sigue leyendo del ROM original en tiempo de ejecución. Ningún paquete generado por DragonRecomp incluye el ROM. Si compartes la carpeta exportada con alguien, **esa persona necesita poner su propia copia legal** del ROM — exactamente igual que proyectos como [Zelda64Recomp](https://github.com/Mr-Wiseguy/Zelda64Recomp) o nxnative. Ver la sección [📦 ROM original en paquetes exportados](#-rom-original-en-paquetes-exportados) más abajo.
 
@@ -42,7 +42,7 @@ DragonRecomp incluye **DragonRecomp Studio**, una interfaz gráfica moderna, int
 |  🐉 DragonRecomp Studio                                   [📁 Abrir ROM] |
 +--------------------------------------------------------------------------+
 |                                                                          |
-|     [ 📁 SELECCIONAR ARCHIVO ROM (.nes, .sfc, .smc, .gb, .gbc)... ]       |
+|     [ 📁 SELECCIONAR ARCHIVO ROM (.nes, .sfc, .gb, .gba, .sms, .gg)... ]   |
 |                                                                          |
 |           — o arrastra y suelta tu archivo ROM aquí —                     |
 |                                                                          |
@@ -69,11 +69,11 @@ También puedes iniciar el binario directamente en Linux:
 
 ### Paso 2: Selecciona tu juego
 Tienes dos formas muy sencillas de cargar tu juego:
-* Haz clic en el botón azul grande **`📁 SELECCIONAR ARCHIVO ROM (.nes, .sfc, .smc, .gb, .gbc)...`** y elige tu archivo desde el explorador de carpetas.
+* Haz clic en el botón **`📁 SELECCIONAR ARCHIVO ROM`** y elige tu archivo (`.nes`, `.sfc`, `.smc`, `.gb`, `.gbc`, `.gba`, `.sms`, `.gg`) desde el explorador de carpetas.
 * O simplemente **arrastra el archivo de tu juego** desde tu carpeta y suéltalo dentro de la ventana del programa.
 
 ### Paso 3: Análisis y Recompilación automática
-El programa detectará al instante si se trata de un juego de NES, SNES, Game Boy / Game Boy Color o Game Boy Advance, identificará el título, la memoria del cartucho, comprobará su compatibilidad y preparará la recompilación en segundos sin que tengas que configurar parámetros complicados.
+El programa detectará al instante si se trata de un juego de NES, SNES, Game Boy / Game Boy Color, Game Boy Advance o Sega Master System / Game Gear, identificará el título, la memoria del cartucho, comprobará su compatibilidad y preparará la recompilación en segundos sin que tengas que configurar parámetros complicados.
 
 ### Paso 4: Jugar o Exportar
 * **▶ Probar juego**: Pulsa este botón para abrir y disfrutar tu juego inmediatamente en tu pantalla.
@@ -118,14 +118,14 @@ Puedes jugar tanto con tu teclado como conectando cualquier mando por USB o Blue
 | Acción en el juego | Tecla alternativa 1 | Tecla alternativa 2 | Mando / Gamepad |
 | :--- | :---: | :---: | :---: |
 | **Cruz direccional (Moverse)** | Flechas de dirección | Teclas `W`, `A`, `S`, `D` | D-Pad o Palanca izquierda |
-| **Botón A** | `X` | `J` | Botón Sur (A en Xbox / Cruz en PS) |
-| **Botón B** | `Z` | `K` | Botón Este (B en Xbox / Círculo en PS) |
-| **Botón X** *(solo SNES)* | `S` | `I` | Botón Norte (Y en Xbox / Triángulo en PS) |
-| **Botón Y** *(solo SNES)* | `A` | `U` | Botón Oeste (X en Xbox / Cuadrado en PS) |
-| **Gatillo L** *(solo SNES)* | `Q` | — | Gatillo o botón `LB` / `L1` |
-| **Gatillo R** *(solo SNES)* | `W` | — | Gatillo o botón `RB` / `R1` |
-| **Start** | `Enter` | — | Botón Start / Menú / Options |
-| **Select** | `Shift Derecho` | `Tab` | Botón Select / Back / Share |
+| **Botón A / Botón 1 (SMS/GG)** | `X` *(NES/SNES)* / `Z` *(GB/GBA/SMS/GG)* | `J` | Botón Sur (A en Xbox / Cruz en PS) |
+| **Botón B / Botón 2 (SMS/GG)** | `Z` *(NES/SNES)* / `X` *(GB/GBA/SMS/GG)* | `K` | Botón Este (B en Xbox / Círculo en PS) |
+| **Botón X** *(solo SNES)* | `V` | `I` | Botón Norte (Y en Xbox / Triángulo en PS) |
+| **Botón Y** *(solo SNES)* | `C` | `L` | Botón Oeste (X en Xbox / Cuadrado en PS) |
+| **Gatillo L** *(SNES / GBA)* | `Q` | `U` *(GBA)* | Gatillo o botón `LB` / `L1` |
+| **Gatillo R** *(SNES / GBA)* | `E` | `R` *(SNES)* / `I` *(GBA)* | Gatillo o botón `RB` / `R1` |
+| **Start / Pause NMI (SMS)** | `Enter` | `Espacio` *(SMS/GG)* | Botón Start / Menú / Options |
+| **Select** | `Shift Derecho` | `Tab` / `Backspace` | Botón Select / Back / Share |
 | **Salir del juego** | `Escape` | — | Guía / Home |
 
 ### ⌨️ Atajos y Guardado de Estados (Hotkeys)
@@ -135,7 +135,7 @@ Puedes jugar tanto con tu teclado como conectando cualquier mando por USB o Blue
 | **`F5`** | **Guardado Rápido (*Quick Save*)**: Guarda el estado de la partida en la ranura activa. |
 | **`F7`** | **Carga Rápida (*Quick Load*)**: Restaura el estado de la partida desde la ranura activa. |
 | **`0` a `9`** | **Seleccionar Ranura (*Slots*)**: Cambia entre las 10 ranuras de guardado disponibles (0-9). |
-| **`F8`** | **Relación de Aspecto**: Alterna entre proporción clásica (4:3 en NES/SNES, 10:9 en GB) y pantalla completa. |
+| **`F8`** | **Relación de Aspecto**: Alterna entre proporción clásica (4:3 en NES/SNES/SMS, 10:9 en GB/GG, 3:2 en GBA) y pantalla completa. |
 | **`F9`** | **Filtro CRT**: Alterna en tiempo real las líneas de barrido retro (*scanlines*). |
 | **`F11`** o **`Alt + Enter`** | **Pantalla Completa**: Alterna entre modo ventana y pantalla completa. |
 | **Archivos `.sav`** | **Persistencia en batería**: Los juegos que guardan partida (Zelda, Pokémon, etc.) persisten automáticamente su archivo `.sav`. |
@@ -185,7 +185,9 @@ ctest --test-dir build --output-on-failure
 * [docs/SNES_SPEC.md](docs/SNES_SPEC.md) — Especificación técnica de SNES (W65C816, PPU 5C77/5C78, SPC700).
 * [docs/GB_SPEC.md](docs/GB_SPEC.md) — Especificación técnica de Game Boy / Game Boy Color (Sharp SM83, PPU, APU, MBC).
 * [docs/GBA_SPEC.md](docs/GBA_SPEC.md) — Especificación técnica de Game Boy Advance (ARM7TDMI ARM/Thumb, PPU Modos 0–5, DirectSound APU, DMA, BIOS HLE).
+* [docs/SMS_SPEC.md](docs/SMS_SPEC.md) — Especificación técnica de Sega Master System y Game Gear (Zilog Z80, VDP Modo 4, SN76489 PSG, mappers Sega/Codemasters/Korean).
 * [docs/AUTO_PIPELINE_SPEC.md](docs/AUTO_PIPELINE_SPEC.md) — Detección automática, pipeline de aprendizaje y diagnóstico.
+* [docs/ROADMAP.md](docs/ROADMAP.md) — Plan de expansión multi-consola y flujo de ingeniería por plataforma.
 * [docs/MILESTONES.md](docs/MILESTONES.md) — Hoja de ruta y estado de desarrollo del proyecto.
 
 ---
@@ -193,4 +195,4 @@ ctest --test-dir build --output-on-failure
 ## 📜 Licencia
 
 Este proyecto está distribuido bajo la **Licencia MIT**. Consulta el archivo `LICENSE` o los términos de licencia abierta para más detalles.
-Nintendo, NES, Super Nintendo y Game Boy son marcas registradas de Nintendo Co., Ltd. Este proyecto es un desarrollo independiente de código abierto con fines de preservación e investigación y no está afiliado ni respaldado por Nintendo.
+Nintendo, NES, Super Nintendo, Game Boy y Game Boy Advance son marcas registradas de Nintendo Co., Ltd.; Sega, Master System y Game Gear son marcas registradas de SEGA Corporation. Este proyecto es un desarrollo independiente de código abierto con fines de preservación e investigación y no está afiliado ni respaldado por Nintendo ni SEGA.

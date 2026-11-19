@@ -184,6 +184,13 @@ void scan_dir_for_executables(const std::filesystem::path& dir, std::filesystem:
 
 RomPlatform parse_platform_hint(const std::string& s) {
     const std::string l = lower(s);
+    if (l.find("game gear") != std::string::npos || l == "gg") {
+        return RomPlatform::GameGear;
+    }
+    if (l.find("master system") != std::string::npos || l.find("sms") != std::string::npos ||
+        l.find("z80") != std::string::npos) {
+        return RomPlatform::MasterSystem;
+    }
     if (l.find("game boy advance") != std::string::npos || l.find("gba") != std::string::npos ||
         l.find("arm7tdmi") != std::string::npos) {
         return RomPlatform::GameBoyAdvance;
@@ -220,6 +227,10 @@ std::string platform_key(RomPlatform p) {
             return "gbc";
         case RomPlatform::GameBoyAdvance:
             return "gba";
+        case RomPlatform::MasterSystem:
+            return "sms";
+        case RomPlatform::GameGear:
+            return "gg";
         default:
             return "unknown";
     }
@@ -635,7 +646,8 @@ PortableInspection GameLibrary::inspect_portable_folder(const std::filesystem::p
         // b) Check by hinted SHA-1 inside `roms/`
         if (!out.hinted_sha1.empty()) {
             const auto by_sha = dragon::find_rom_by_sha1(
-                roms_dir, out.hinted_sha1, {".nes", ".sfc", ".smc", ".gb", ".gbc", ".gba"});
+                roms_dir, out.hinted_sha1,
+                {".nes", ".sfc", ".smc", ".gb", ".gbc", ".gba", ".sms", ".gg"});
             if (!by_sha.empty()) {
                 RomInfo info = detect_rom(by_sha);
                 if (info.is_valid()) {

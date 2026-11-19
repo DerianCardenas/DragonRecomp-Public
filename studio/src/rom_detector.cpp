@@ -70,6 +70,43 @@ RomInfo detect_rom(const std::filesystem::path& path) {
         return info;
     }
 
+    // 1.5. Check Sega Master System / Game Gear ("TMR SEGA" header or .sms/.gg extension)
+    {
+        const std::string ext_chk = path.extension().string();
+        const bool is_sms_ext = (ext_chk == ".sms" || ext_chk == ".SMS");
+        const bool is_gg_ext = (ext_chk == ".gg" || ext_chk == ".GG");
+        const size_t sms_off =
+            (data.size() > 512U && (data.size() % 16384U) == 512U) ? 512U : 0U;
+        const uint8_t* sms_rom = data.data() + sms_off;
+        const size_t sms_sz = data.size() - sms_off;
+
+        bool has_tmr_sega = false;
+        uint8_t region_code = 0;
+        uint16_t sms_csum = 0;
+        constexpr size_t kTmrOffsets[3] = {0x7FF0U, 0x3FF0U, 0x1FF0U};
+        for (size_t off : kTmrOffsets) {
+            if (off + 16U <= sms_sz && std::memcmp(sms_rom + off, "TMR SEGA", 8) == 0) {
+                has_tmr_sega = true;
+                sms_csum = static_cast<uint16_t>(sms_rom[off + 0x0AU] |
+                                                 (static_cast<uint16_t>(sms_rom[off + 0x0BU]) << 8U));
+                region_code = static_cast<uint8_t>((sms_rom[off + 0x0FU] >> 4U) & 0x0FU);
+                break;
+            }
+        }
+
+        if (has_tmr_sega || is_sms_ext || is_gg_ext) {
+            const bool is_gg = is_gg_ext || (has_tmr_sega && region_code >= 5U && region_code <= 7U);
+            info.platform = is_gg ? RomPlatform::GameGear : RomPlatform::MasterSystem;
+            info.rom_size_kb = sms_sz / 1024U;
+            info.checksum = sms_csum;
+            info.smc_header = (sms_off != 0U);
+            info.sha1 = dragon::sha1_hex(std::span<const uint8_t>(sms_rom, sms_sz));
+            info.clean_name = clean_title_from_path(path);
+            info.internal_title = info.clean_name;
+            return info;
+        }
+    }
+
     // 2. Check SNES header
     // Check if 512-byte SMC header is present
     size_t smc_offset = 0;

@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 
 #include "imgui.h"
 #include "studio/app.h"
@@ -127,8 +128,92 @@ const char* rom_platform_badge(RomPlatform p) {
             return "GBC";
         case RomPlatform::GameBoyAdvance:
             return "GBA";
+        case RomPlatform::MasterSystem:
+            return "SMS";
+        case RomPlatform::GameGear:
+            return "GG";
         default:
             return "ROM";
+    }
+}
+
+const char* rom_platform_display_name(RomPlatform p) {
+    switch (p) {
+        case RomPlatform::NES:
+            return "NES";
+        case RomPlatform::SNES:
+            return "Super Nintendo";
+        case RomPlatform::GameBoy:
+            return "Game Boy";
+        case RomPlatform::GameBoyColor:
+            return "Game Boy Color";
+        case RomPlatform::GameBoyAdvance:
+            return "Game Boy Advance";
+        case RomPlatform::MasterSystem:
+            return "Sega Master System";
+        case RomPlatform::GameGear:
+            return "Sega Game Gear";
+        default:
+            return "Consola";
+    }
+}
+
+struct ControlRow {
+    const char* action;
+    const char* keys;
+};
+
+std::vector<ControlRow> console_controls_for(RomPlatform p) {
+    switch (p) {
+        case RomPlatform::MasterSystem:
+            return {
+                {"Cruceta", "Flechas / WASD"},
+                {"Boton 1", "Z / J"},
+                {"Boton 2", "X / K"},
+                {"Pause (NMI)", "Enter / Espacio"},
+            };
+        case RomPlatform::GameGear:
+            return {
+                {"Cruceta", "Flechas / WASD"},
+                {"Boton 1", "Z / J"},
+                {"Boton 2", "X / K"},
+                {"Start", "Enter / Espacio"},
+            };
+        case RomPlatform::NES:
+            return {
+                {"Cruceta", "Flechas / WASD"},
+                {"Boton A", "X / J"},
+                {"Boton B", "Z / K"},
+                {"Start / Select", "Enter / Tab o Shift"},
+            };
+        case RomPlatform::SNES:
+            return {
+                {"Cruceta", "Flechas / WASD"},
+                {"B / A", "Z / X (J / K)"},
+                {"Y / X", "C / V (L / I)"},
+                {"L / R", "Q / E"},
+                {"Start / Select", "Enter / Tab o Shift"},
+            };
+        case RomPlatform::GameBoy:
+        case RomPlatform::GameBoyColor:
+            return {
+                {"Cruceta", "Flechas / WASD"},
+                {"Boton A / B", "Z / X (J / K)"},
+                {"Start / Select", "Enter / Backspace o Shift"},
+            };
+        case RomPlatform::GameBoyAdvance:
+            return {
+                {"Cruceta", "Flechas / WASD"},
+                {"Boton A / B", "Z / X (J / K)"},
+                {"L / R", "Q / E (U / I)"},
+                {"Start / Select", "Enter / Backspace o Shift"},
+            };
+        default:
+            return {
+                {"Cruceta", "Flechas / WASD"},
+                {"Botones", "Z / X"},
+                {"Start", "Enter"},
+            };
     }
 }
 
@@ -362,19 +447,20 @@ void StudioApp::render_recompiler() {
 
     ImGui::Dummy(ImVec2(0.f, 6.f));
 
-    // Format chips (.nes, .sfc, .smc, .gb, .gbc, .gba)
-    const char* chips[] = {".nes", ".sfc", ".smc", ".gb", ".gbc", ".gba"};
+    // Format chips (.nes, .sfc, .smc, .gb, .gbc, .gba, .sms, .gg)
+    const char* chips[] = {".nes", ".sfc", ".smc", ".gb", ".gbc", ".gba", ".sms", ".gg"};
+    constexpr int kChipCount = 8;
     if (fonts_.small)
         ImGui::PushFont(fonts_.small);
     float total_chips_w = 0.0f;
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < kChipCount; ++i) {
         total_chips_w += ImGui::CalcTextSize(chips[i]).x + 18.0f;
         if (i > 0)
             total_chips_w += 6.0f;
     }
     float cx = dz0.x + (ImGui::GetWindowWidth() - total_chips_w) * 0.5f;
     const float cy = ImGui::GetCursorScreenPos().y;
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < kChipCount; ++i) {
         const ImVec2 csz = ImGui::CalcTextSize(chips[i]);
         const float cw = csz.x + 18.0f;
         const float ch = csz.y + 8.0f;
@@ -686,6 +772,84 @@ void StudioApp::render_recompiler() {
         ImGui::EndChild();
         ImGui::PopStyleVar(2);
         ImGui::PopStyleColor();
+
+        // --- Console Controls Card (shown right after recompilation completes) ---
+        if (is_ready) {
+            ImGui::Dummy(ImVec2(0.f, 12.f));
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ThemeColors::Surface);
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(18.0f, 14.0f));
+            ImGui::BeginChild("ConsoleControlsCard", ImVec2(0.0f, 0.0f),
+                              ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY,
+                              ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+            if (fonts_.body_bold)
+                ImGui::PushFont(fonts_.body_bold);
+            ImGui::TextColored(ThemeColors::TextPrimary, "Controles — %s",
+                               rom_platform_display_name(active_rom_.platform));
+            if (fonts_.body_bold)
+                ImGui::PopFont();
+
+            ImGui::Dummy(ImVec2(0.f, 6.f));
+            ImGui::Separator();
+            ImGui::Dummy(ImVec2(0.f, 8.f));
+
+            const auto pad_rows = console_controls_for(active_rom_.platform);
+            static const ControlRow kSysRows[] = {
+                {"Guardar / Cargar", "F5 / F7 (0-9)"},
+                {"Pantalla completa", "F11"},
+                {"Filtro CRT / Aspecto", "F9 / F8"},
+                {"Salir del juego", "Esc"},
+            };
+
+            auto draw_binding_table = [&](const char* id, const char* header,
+                                          const ControlRow* rows, size_t count) {
+                if (fonts_.small)
+                    ImGui::PushFont(fonts_.small);
+                ImGui::TextColored(ThemeColors::AccentCyan, "%s", header);
+                ImGui::Dummy(ImVec2(0.f, 4.f));
+                if (ImGui::BeginTable(id, 2,
+                                      ImGuiTableFlags_SizingStretchProp |
+                                          ImGuiTableFlags_NoSavedSettings)) {
+                    ImGui::TableSetupColumn("Accion", ImGuiTableColumnFlags_WidthStretch, 0.48f);
+                    ImGui::TableSetupColumn("Teclas", ImGuiTableColumnFlags_WidthStretch, 0.52f);
+                    for (size_t i = 0; i < count; ++i) {
+                        ImGui::TableNextRow();
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::TextColored(ThemeColors::TextMuted, "%s", rows[i].action);
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::TextColored(ThemeColors::TextPrimary, "%s", rows[i].keys);
+                    }
+                    ImGui::EndTable();
+                }
+                if (fonts_.small)
+                    ImGui::PopFont();
+            };
+
+            const float ctrl_w = ImGui::GetContentRegionAvail().x;
+            if (ctrl_w >= 460.0f) {
+                if (ImGui::BeginTable("ControlsTwoCol", 2,
+                                      ImGuiTableFlags_SizingStretchSame |
+                                          ImGuiTableFlags_NoSavedSettings)) {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    draw_binding_table("PadTbl", "MANDO", pad_rows.data(), pad_rows.size());
+                    ImGui::TableSetColumnIndex(1);
+                    draw_binding_table("SysTbl", "ATAJOS", kSysRows,
+                                       sizeof(kSysRows) / sizeof(kSysRows[0]));
+                    ImGui::EndTable();
+                }
+            } else {
+                draw_binding_table("PadTblStack", "MANDO", pad_rows.data(), pad_rows.size());
+                ImGui::Dummy(ImVec2(0.f, 8.f));
+                draw_binding_table("SysTblStack", "ATAJOS", kSysRows,
+                                   sizeof(kSysRows) / sizeof(kSysRows[0]));
+            }
+
+            ImGui::EndChild();
+            ImGui::PopStyleVar(2);
+            ImGui::PopStyleColor();
+        }
     }
 
     ImGui::EndChild();

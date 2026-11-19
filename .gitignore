@@ -6,6 +6,8 @@ build/
 *.gb
 *.gbc
 *.gba
+*.sms
+*.gg
 .cache/
 
 # Build directories
@@ -20,6 +22,7 @@ nes/games/*/generated/
 snes/games/*/generated/
 gb/games/*/generated/
 gba/games/*/generated/
+sms/games/*/generated/
 fallback.log
 ExportedGames/
 .dragon/

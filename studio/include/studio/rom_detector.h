@@ -14,6 +14,8 @@ enum class RomPlatform {
     GameBoy,
     GameBoyColor,
     GameBoyAdvance,
+    MasterSystem,
+    GameGear,
 };
 
 struct RomInfo {
@@ -60,6 +62,10 @@ struct RomInfo {
                 return "Game Boy Color (SM83)";
             case RomPlatform::GameBoyAdvance:
                 return "Game Boy Advance (ARM7TDMI)";
+            case RomPlatform::MasterSystem:
+                return "Sega Master System (Z80)";
+            case RomPlatform::GameGear:
+                return "Sega Game Gear (Z80)";
             default:
                 return "Desconocida";
         }
