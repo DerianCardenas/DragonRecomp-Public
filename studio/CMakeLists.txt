@@ -24,7 +24,9 @@ add_library(studio_lib STATIC
   src/packager.cpp
   src/library.cpp
   src/library_view.cpp
+  src/studio_views.cpp
   src/cover_manager.cpp
+  src/settings.cpp
   src/theme.cpp
   src/app.cpp)
 

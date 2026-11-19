@@ -1,0 +1,592 @@
+/* DragonRecomp Studio — Tauri v2 Prototype
+   Design system: Flat Dark Gamer UI — ZERO gradients, solid elevation & crisp borders. */
+
+:root {
+  --bg-base: #0B0E14;
+  --bg-panel: #111620;
+  --bg-card: #171D2B;
+  --bg-card-hover: #1E2638;
+  --bg-input: #0E121B;
+  --border: #252E42;
+  --border-strong: #35425E;
+
+  --text-primary: #F1F5F9;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+
+  --accent: #00E5E8;
+  --accent-hover: #24F0F3;
+  --accent-ink: #071014;
+
+  --nes: #EF4444;
+  --snes: #A855F7;
+  --gb: #22C55E;
+  --gba: #3B82F6;
+  --amber: #F59E0B;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  user-select: none;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-rows: 68px 1fr;
+  height: 100vh;
+}
+
+/* ── Top Navigation Bar ────────────────────────────────────────────────── */
+.topbar {
+  background: var(--bg-panel);
+  border-bottom: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  gap: 24px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 16px;
+  letter-spacing: -0.5px;
+}
+
+.brand-name {
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.8px;
+}
+
+.brand-name span {
+  color: var(--accent);
+}
+
+.nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-base);
+  padding: 5px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+
+.nav-tab {
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.nav-tab:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.nav-tab.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.search-box {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 14px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 240px;
+}
+
+.search-box:focus-within {
+  border-color: var(--accent);
+}
+
+.search-box input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  width: 100%;
+}
+
+.btn {
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  padding: 0 18px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.14s ease, border-color 0.14s ease, transform 0.1s ease;
+}
+
+.btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-strong);
+}
+
+.btn:active { transform: scale(0.98); }
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+/* ── Main Content Workspace ────────────────────────────────────────────── */
+.workspace {
+  overflow-y: auto;
+  padding: 28px 32px;
+}
+
+.view { display: none; }
+.view.active { display: block; }
+
+/* ── Library View ──────────────────────────────────────────────────────── */
+.library-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+
+.library-title h1 {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  margin-bottom: 4px;
+}
+
+.library-title p {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.console-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.console-tab {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  height: 44px;
+  padding: 0 20px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.14s ease;
+}
+
+.console-tab .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.console-tab:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.console-tab.active {
+  color: var(--accent-ink);
+  border-color: transparent;
+}
+
+.console-tab.active .dot {
+  background: var(--accent-ink) !important;
+}
+
+.console-tab[data-console="nes"].active { background: var(--nes); color: #fff; }
+.console-tab[data-console="snes"].active { background: var(--snes); color: #fff; }
+.console-tab[data-console="gb"].active { background: var(--gb); color: #071014; }
+.console-tab[data-console="gba"].active { background: var(--gba); color: #fff; }
+
+.library-layout {
+  display: grid;
+  grid-template-columns: 1fr 330px;
+  gap: 24px;
+  align-items: start;
+}
+
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+  gap: 20px;
+}
+
+.game-card {
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.14s ease;
+}
+
+.game-card:hover { transform: translateY(-4px); }
+
+.cover-box {
+  aspect-ratio: 3 / 4;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.14s ease;
+}
+
+.game-card:hover .cover-box,
+.game-card.selected .cover-box {
+  border-color: var(--accent);
+}
+
+.cover-stripe {
+  height: 6px;
+  width: 48px;
+  border-radius: 2px;
+}
+
+.cover-art-icon {
+  font-size: 38px;
+  font-weight: 900;
+  letter-spacing: -1px;
+  color: #FFFFFF;
+  opacity: 0.92;
+  font-family: "JetBrains Mono", monospace;
+}
+
+.cover-meta-line {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.game-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.game-card:hover .game-name,
+.game-card.selected .game-name {
+  color: var(--accent);
+}
+
+.add-card .cover-box {
+  border-style: dashed;
+  background: var(--bg-panel);
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.add-card .plus {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+/* ── Right Game Inspector Panel ────────────────────────────────────────── */
+.inspector {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.inspector-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  width: fit-content;
+}
+
+.inspector h2 {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.stat-rows {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stat-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+.stat-box .label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.stat-box .val {
+  font-size: 14px;
+  font-weight: 700;
+  font-family: "JetBrains Mono", monospace;
+}
+
+.inspector-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inspector-actions .btn {
+  width: 100%;
+  justify-content: center;
+  height: 44px;
+  font-size: 14px;
+}
+
+/* ── Recompiler View ───────────────────────────────────────────────────── */
+.recomp-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 24px;
+}
+
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 26px;
+}
+
+.drop-zone {
+  border: 2px dashed var(--border-strong);
+  background: var(--bg-input);
+  border-radius: var(--radius-md);
+  padding: 44px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.drop-zone h2 {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.drop-zone p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  max-width: 420px;
+}
+
+.progress-track {
+  height: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 16px 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  width: 68%;
+  transition: width 0.25s ease;
+}
+
+.stage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.stage-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.stage-item.done { border-left: 4px solid var(--gb); }
+.stage-item.running { border-left: 4px solid var(--accent); }
+.stage-item.pending { border-left: 4px solid var(--border-strong); color: var(--text-muted); }
+
+/* ── Settings View ─────────────────────────────────────────────────────── */
+.settings-container {
+  max-width: 780px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.setting-row {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.setting-info h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.setting-info p {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.core-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.core-pill {
+  min-width: 54px;
+  height: 38px;
+  background: var(--bg-input);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-family: "JetBrains Mono", monospace;
+}
+
+.seg-group {
+  display: flex;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  gap: 4px;
+}
+
+.seg-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 8px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.seg-btn.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 28px;
+  background: var(--bg-card);
+  border: 2px solid var(--accent);
+  color: var(--text-primary);
+  padding: 12px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.toast.show { opacity: 1; }

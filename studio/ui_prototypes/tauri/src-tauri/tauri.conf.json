@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "DragonRecomp Studio",
+  "version": "2.0.0-prototype",
+  "identifier": "com.dragonrecomp.studio",
+  "build": {
+    "frontendDist": "../src"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "DragonRecomp Studio",
+        "width": 1360,
+        "height": 840,
+        "fullscreen": true,
+        "resizable": true,
+        "backgroundColor": "#0B0E14"
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  }
+}

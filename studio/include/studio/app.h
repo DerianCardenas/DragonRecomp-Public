@@ -12,6 +12,7 @@
 #include "studio/packager.h"
 #include "studio/pipeline.h"
 #include "studio/rom_detector.h"
+#include "studio/settings.h"
 #include "studio/theme.h"
 
 namespace dragon::studio {
@@ -19,6 +20,7 @@ namespace dragon::studio {
 enum class StudioView {
     Library,
     Recompiler,
+    Preferences,
 };
 
 class StudioApp {
@@ -26,7 +28,7 @@ public:
     StudioApp();
     ~StudioApp();
 
-    bool init(int width = 960, int height = 640);
+    bool init(int width = 1120, int height = 720);
     void run();
     void shutdown();
 
@@ -43,27 +45,33 @@ public:
     void open_cover_file_dialog(const std::string& sha1);
     void queue_assign_cover(const std::string& sha1, const std::filesystem::path& cover_path);
     void set_export_directory(const std::string& path);
+    void open_pref_export_dir_dialog();
+    void queue_pref_export_dir(const std::filesystem::path& path);
 
 private:
     void process_events();
     void render_ui();
 
-    void render_header();
-    void render_drop_zone();
-    void render_rom_card();
-    void render_pipeline_progress();
-    void render_ready_hub();
-    void render_error_view();
+    void apply_settings(bool persist);
+    void quick_save_to_library();
+
+    void render_sidebar();
+    void render_topbar();
+    void render_library();
+    void render_recompiler();
+    void render_preferences();
     void render_package_modal();
     void render_manual_import_modal();
-    void render_library();
     void track_library_state();
 
     SDL_Window* window_ = nullptr;
     SDL_Renderer* renderer_ = nullptr;
     bool running_ = false;
+    float display_scale_ = 1.0f;
 
     StudioFonts fonts_;
+    StudioSettings settings_;
+    StudioSettings draft_settings_;
 
     Pipeline pipeline_;
     RomInfo active_rom_;
@@ -73,10 +81,12 @@ private:
     CoverManager cover_mgr_;
     StudioView current_view_ = StudioView::Library;
     int library_console_tab_ = 0;  // 0 = NES, 1 = SNES, 2 = GB/GBC, 3 = GBA
+    std::string selected_library_sha1_;
     PipelineStage prev_stage_ = PipelineStage::Idle;
     bool was_game_running_ = false;
     int64_t game_start_unix_ = 0;
     std::string library_notice_;
+    std::string pref_status_message_;
 
     // UI state
     bool fullscreen_option_ = false;
@@ -128,6 +138,10 @@ private:
     char manual_import_rom_buf_[512] = "";
     bool manual_import_copy_rom_ = true;
     std::string manual_import_error_;
+
+    // Asynchronous Preferences export directory dialog queue
+    std::mutex pending_pref_dir_mutex_;
+    std::filesystem::path pending_pref_export_dir_;
 };
 
 }  // namespace dragon::studio

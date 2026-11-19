@@ -85,6 +85,7 @@ private:
     bool is_cgb_ = false;
     bool classic_palette_ = false;
     bool frame_complete_ = false;
+    bool stat_irq_line_ = false;
 
     uint16_t dot_ = 0;
     uint8_t ly_ = 0;

@@ -41,6 +41,7 @@ void Ppu::reset() noexcept {
     wx_ = 0;
     window_line_ = 0;
     frame_complete_ = false;
+    stat_irq_line_ = false;
 
     bgp_ = 0xFCU;
     obp0_ = 0xFFU;
@@ -125,11 +126,17 @@ void Ppu::write_register(uint16_t addr, uint8_t value, Bus* bus) noexcept {
                 // Turning LCD off resets LY to 0 and Mode to 0
                 ly_ = 0;
                 dot_ = 0;
+                window_line_ = 0;
+                stat_irq_line_ = false;
                 stat_ &= ~0x03U;
                 framebuffer_.fill(0xFFFFFFFFU);
             } else if (!was_on && is_on) {
                 dot_ = 0;
                 ly_ = 0;
+                window_line_ = 0;
+                stat_irq_line_ = false;
+                stat_ = (stat_ & ~0x03U) | 0x02U;
+                update_stat_interrupts(bus);
             }
             break;
         }
@@ -206,21 +213,24 @@ void Ppu::update_stat_interrupts(Bus* bus) noexcept {
         stat_ &= ~0x04U;
     }
 
+    // Pan Docs (https://gbdev.io/pandocs/Interrupt_Sources.html#int-48--stat-interrupt):
+    // The STAT interrupt is triggered only on a rising edge (0 -> 1) of the internal STAT line.
     uint8_t mode = stat_ & 0x03U;
-    bool trigger = false;
+    bool stat_line = false;
 
     if (lyc_match && (stat_ & 0x40U))
-        trigger = true;
+        stat_line = true;
     if (mode == 2 && (stat_ & 0x20U))
-        trigger = true;
+        stat_line = true;
     if (mode == 1 && (stat_ & 0x10U))
-        trigger = true;
+        stat_line = true;
     if (mode == 0 && (stat_ & 0x08U))
-        trigger = true;
+        stat_line = true;
 
-    if (trigger) {
+    if (stat_line && !stat_irq_line_) {
         bus->request_interrupt(1);  // LCD STAT interrupt
     }
+    stat_irq_line_ = stat_line;
 }
 
 void Ppu::advance(uint32_t t_cycles, Bus* bus) noexcept {
@@ -228,46 +238,53 @@ void Ppu::advance(uint32_t t_cycles, Bus* bus) noexcept {
         return;  // LCD is disabled
     }
 
-    dot_ += static_cast<uint16_t>(t_cycles);
-
-    while (dot_ >= kDotsPerScanline) {
-        dot_ -= kDotsPerScanline;
-        ly_ = static_cast<uint8_t>((ly_ + 1U) % kScanlinesPerFrame);
-
-        if (ly_ == 0) {
-            window_line_ = 0;
-        }
-
-        if (ly_ == 144) {
-            // Enter VBlank (Mode 1)
-            stat_ = (stat_ & ~0x03U) | 0x01U;
-            frame_complete_ = true;
-            if (bus) {
-                bus->request_interrupt(0);  // VBlank interrupt
+    // Step through each PPU mode boundary (80, 252, 456) so large cycle deltas from
+    // recompiled basic blocks never skip Mode 3 scanline rendering or Mode 0 HBlank/HDMA.
+    uint32_t remaining = t_cycles;
+    while (remaining > 0U) {
+        uint16_t next_boundary = kDotsPerScanline;
+        if (ly_ < 144U) {
+            if (dot_ < 80U) {
+                next_boundary = 80U;
+            } else if (dot_ < 252U) {
+                next_boundary = 252U;
             }
-            update_stat_interrupts(bus);
-        } else if (ly_ < 144) {
-            // Visible scanline: Mode 2 (OAM Search)
-            stat_ = (stat_ & ~0x03U) | 0x02U;
-            update_stat_interrupts(bus);
         }
-    }
 
-    if (ly_ < 144) {
-        uint8_t current_mode = stat_ & 0x03U;
-        if (dot_ < 80) {
-            if (current_mode != 2) {
+        const uint32_t to_boundary = static_cast<uint32_t>(next_boundary - dot_);
+        const uint32_t step = (remaining < to_boundary) ? remaining : to_boundary;
+        dot_ = static_cast<uint16_t>(dot_ + step);
+        remaining -= step;
+
+        if (dot_ >= kDotsPerScanline) {
+            dot_ = 0;
+            ly_ = static_cast<uint8_t>((ly_ + 1U) % kScanlinesPerFrame);
+
+            if (ly_ == 0U) {
+                window_line_ = 0;
+            }
+
+            if (ly_ == 144U) {
+                // Enter VBlank (Mode 1)
+                stat_ = (stat_ & ~0x03U) | 0x01U;
+                frame_complete_ = true;
+                if (bus) {
+                    bus->request_interrupt(0);  // VBlank interrupt
+                }
+                update_stat_interrupts(bus);
+            } else if (ly_ < 144U) {
+                // Visible scanline: Mode 2 (OAM Search)
                 stat_ = (stat_ & ~0x03U) | 0x02U;
                 update_stat_interrupts(bus);
+            } else {
+                // VBlank scanlines 145..153: still Mode 1, check LYC=LY
+                update_stat_interrupts(bus);
             }
-        } else if (dot_ < 252) {
-            if (current_mode != 3) {
-                stat_ = (stat_ & ~0x03U) | 0x03U;
-                // Render visible scanline into framebuffer
+        } else if (ly_ < 144U) {
+            if (dot_ == 80U) {
+                stat_ = (stat_ & ~0x03U) | 0x03U;  // Mode 3: Drawing
                 render_scanline(bus);
-            }
-        } else {
-            if (current_mode != 0) {
+            } else if (dot_ == 252U) {
                 stat_ = (stat_ & ~0x03U);  // Mode 0: HBlank
                 if (bus) {
                     bus->step_hdma();

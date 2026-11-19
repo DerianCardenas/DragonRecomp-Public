@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DragonRecomp Studio — Prototipo Tauri</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">DR</div>
+        <div class="brand-name">DRAGON<span>RECOMP</span> STUDIO</div>
+      </div>
+
+      <nav class="nav-tabs" aria-label="Navegación principal">
+        <button class="nav-tab active" data-view="library">BIBLIOTECA</button>
+        <button class="nav-tab" data-view="recompiler">RECOMPILADOR</button>
+        <button class="nav-tab" data-view="settings">CONFIGURACIÓN</button>
+      </nav>
+
+      <div class="topbar-actions">
+        <div class="search-box">
+          <span style="color:var(--text-muted)">⌕</span>
+          <input id="searchInput" type="text" placeholder="Buscar juego..." />
+        </div>
+        <button class="btn btn-primary" id="btnImport">+ Importar Recompilado</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <!-- ── VISTA 1: BIBLIOTECA ──────────────────────────────────────── -->
+      <section class="view active" id="view-library">
+        <div class="library-header">
+          <div class="library-title">
+            <h1>Biblioteca de Juegos</h1>
+            <p>Ejecutables nativos portables listos para jugar a 60 FPS.</p>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" id="btnCovers">Descargar carátulas faltantes</button>
+          </div>
+        </div>
+
+        <div class="console-tabs" id="consoleTabs">
+          <button class="console-tab active" data-console="nes">
+            <span class="dot" style="background:var(--nes)"></span> Nintendo NES (3)
+          </button>
+          <button class="console-tab" data-console="snes">
+            <span class="dot" style="background:var(--snes)"></span> Super Nintendo (2)
+          </button>
+          <button class="console-tab" data-console="gb">
+            <span class="dot" style="background:var(--gb)"></span> Game Boy / Color (2)
+          </button>
+          <button class="console-tab" data-console="gba">
+            <span class="dot" style="background:var(--gba)"></span> Game Boy Advance (2)
+          </button>
+        </div>
+
+        <div class="library-layout">
+          <div class="game-grid" id="gameGrid"></div>
+
+          <aside class="inspector" id="inspectorPanel">
+            <span class="inspector-tag" id="inspTag">NES</span>
+            <h2 id="inspTitle">Super Mario Bros. 3</h2>
+            <p id="inspDesc" style="color:var(--text-secondary); font-size:13px; line-height:1.5;">
+              Binario nativo x86_64 compilado desde 6502 a C99. Listo para ejecución instantánea sin emulación de CPU.
+            </p>
+            <div class="stat-rows">
+              <div class="stat-box">
+                <div class="label">Tiempo jugado</div>
+                <div class="val" id="inspTime">4h 12m</div>
+              </div>
+              <div class="stat-box">
+                <div class="label">Motor</div>
+                <div class="val" id="inspMode">NATIVO C99</div>
+              </div>
+              <div class="stat-box">
+                <div class="label">Funciones</div>
+                <div class="val" id="inspFuncs">1,482</div>
+              </div>
+              <div class="stat-box">
+                <div class="label">Tamaño</div>
+                <div class="val" id="inspSize">4.2 MB</div>
+              </div>
+            </div>
+            <div class="inspector-actions">
+              <button class="btn btn-primary" id="btnPlay">▶ JUGAR AHORA</button>
+              <button class="btn" id="btnOpenFolder">Abrir carpeta portable</button>
+              <button class="btn" id="btnOpenRecomp">Abrir en Recompilador</button>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ── VISTA 2: RECOMPILADOR ────────────────────────────────────── -->
+      <section class="view" id="view-recompiler">
+        <div class="library-header">
+          <div class="library-title">
+            <h1>Recompilador Estático</h1>
+            <p>Convierte ROMs de NES, SNES, GB/GBC y GBA en ejecutables nativos C99.</p>
+          </div>
+        </div>
+
+        <div class="recomp-grid">
+          <div class="panel">
+            <div class="drop-zone">
+              <div class="brand-mark" style="width:52px;height:52px;font-size:22px;">+</div>
+              <h2>Arrastra tu ROM aquí</h2>
+              <p>Soporta .nes, .sfc, .smc, .gb, .gbc y .gba. El análisis de bloques y emisión C99 se ejecuta localmente.</p>
+              <button class="btn btn-primary" id="btnSelectRom">Seleccionar archivo ROM...</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <h2 style="font-size:18px; font-weight:800;">Estado del Pipeline</h2>
+              <span class="inspector-tag" style="background:var(--bg-card); color:var(--accent); border:1px solid var(--accent);" id="recompCoreBadge">2 NÚCLEOS · -O1</span>
+            </div>
+
+            <div class="progress-track">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-secondary); font-family:'JetBrains Mono',monospace;">
+              <span>Compilando módulo C99 (14/20)</span>
+              <span>68%</span>
+            </div>
+
+            <div class="stage-list">
+              <div class="stage-item done"><span>1. Detección de cabecera & SHA-1</span><span>0.02s</span></div>
+              <div class="stage-item done"><span>2. Desensamblado CFG recursivo</span><span>0.18s</span></div>
+              <div class="stage-item done"><span>3. Emisión de código C99</span><span>0.24s</span></div>
+              <div class="stage-item running"><span>4. Compilación nativa (2 núcleos)</span><span>En curso</span></div>
+              <div class="stage-item pending"><span>5. Empaquetado Portable</span><span>Pendiente</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── VISTA 3: CONFIGURACIÓN ───────────────────────────────────── -->
+      <section class="view" id="view-settings">
+        <div class="library-header">
+          <div class="library-title">
+            <h1>Configuración</h1>
+            <p>Ajusta los recursos de compilación y preferencias de visualización.</p>
+          </div>
+        </div>
+
+        <div class="settings-container">
+          <div class="setting-row">
+            <div class="setting-info">
+              <h3>Núcleos de compilación</h3>
+              <p>Limita cuántos núcleos de CPU se usan en paralelo para evitar saturar el equipo. Por defecto: 2.</p>
+            </div>
+            <div class="core-stepper">
+              <button class="btn" id="coreDec" style="width:38px;padding:0;justify-content:center;">-</button>
+              <div class="core-pill" id="coreVal">2</div>
+              <button class="btn" id="coreInc" style="width:38px;padding:0;justify-content:center;">+</button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <h3>Perfil de compilación C99</h3>
+              <p>Rápido (-O1) compila 3-5x más rápido y usa poca RAM. Balanceado (-O2) aplica optimizaciones extra.</p>
+            </div>
+            <div class="seg-group" id="optGroup">
+              <button class="seg-btn active" data-opt="-O1">Rápido (-O1)</button>
+              <button class="seg-btn" data-opt="-O2">Balanceado (-O2)</button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <h3>Pantalla completa al iniciar</h3>
+              <p>Abre DragonRecomp Studio directamente en modo fullscreen (alternable con F11).</p>
+            </div>
+            <div class="seg-group">
+              <button class="seg-btn active">Activado</button>
+              <button class="seg-btn">Ventana</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>

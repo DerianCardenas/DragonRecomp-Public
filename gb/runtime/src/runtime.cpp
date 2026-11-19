@@ -61,7 +61,7 @@ void gb_runtime_poll(CpuState* cpu) {
         gb_runtime_dispatch(cpu, cpu->pc, cpu->pc);
     }
 
-    cpu->next_event = cpu->cycles + 456ULL;
+    cpu->next_event = cpu->cycles + 114ULL;
 }
 
 void gb_runtime_dispatch(CpuState* cpu, uint16_t target, uint16_t from_pc) {

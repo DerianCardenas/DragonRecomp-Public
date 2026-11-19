@@ -1,0 +1,309 @@
+import { Theme } from "theme.slint";
+import { GameCard } from "components/game_card.slint";
+
+export component AppWindow inherits Window {
+    title: "DragonRecomp Studio — Prototipo Slint";
+    preferred-width: 1360px;
+    preferred-height: 840px;
+    background: Theme.bg-base;
+
+    in-out property <int> active-view: 0;       // 0=Biblioteca, 1=Recompilador, 2=Configuración
+    in-out property <int> active-console: 0;    // 0=NES, 1=SNES, 2=GB, 3=GBA
+    in-out property <int> compile-cores: 2;
+    in-out property <bool> fast-opt: true;
+    in-out property <int> selected-game: 0;
+
+    VerticalLayout {
+        spacing: 0px;
+
+        // ── Top Bar (Flat Solid Console-Style Header) ─────────────────────
+        Rectangle {
+            height: 64px;
+            background: Theme.bg-panel;
+
+            HorizontalLayout {
+                padding-left: 28px;
+                padding-right: 28px;
+                spacing: 20px;
+                alignment: space-between;
+
+                HorizontalLayout {
+                    spacing: 12px;
+                    alignment: start;
+
+                    Rectangle {
+                        width: 34px;
+                        height: 34px;
+                        border-radius: 6px;
+                        background: Theme.accent;
+                        y: (parent.height - self.height) / 2;
+                        Text {
+                            text: "DR";
+                            color: Theme.accent-ink;
+                            font-size: 15px;
+                            font-weight: 900;
+                        }
+                    }
+
+                    Text {
+                        text: "DRAGONRECOMP STUDIO";
+                        color: Theme.text-primary;
+                        font-size: 16px;
+                        font-weight: 800;
+                        letter-spacing: 1px;
+                        vertical-alignment: center;
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: center;
+
+                    for tab[idx] in ["BIBLIOTECA", "RECOMPILADOR", "CONFIGURACIÓN"] : Rectangle {
+                        width: 152px;
+                        height: 38px;
+                        y: (parent.height - self.height) / 2;
+                        border-radius: 6px;
+                        background: root.active-view == idx ? Theme.accent : Theme.bg-card;
+                        border-width: 1px;
+                        border-color: root.active-view == idx ? Theme.accent : Theme.border;
+
+                        Text {
+                            text: tab;
+                            color: root.active-view == idx ? Theme.accent-ink : Theme.text-secondary;
+                            font-size: 13px;
+                            font-weight: 700;
+                        }
+
+                        TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { root.active-view = idx; }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    width: 170px;
+                    height: 36px;
+                    y: (parent.height - self.height) / 2;
+                    border-radius: 6px;
+                    background: Theme.bg-card;
+                    border-width: 1px;
+                    border-color: Theme.accent;
+
+                    Text {
+                        text: root.compile-cores + " NÚCLEOS · " + (root.fast-opt ? "-O1" : "-O2");
+                        color: Theme.accent;
+                        font-size: 12px;
+                        font-weight: 700;
+                    }
+                }
+            }
+        }
+
+        // Crisp 2px solid divider
+        Rectangle { height: 2px; background: Theme.border; }
+
+        // ── Main Content ──────────────────────────────────────────────────
+        Rectangle {
+            vertical-stretch: 1;
+            background: Theme.bg-base;
+
+            // VIEW 0: BIBLIOTECA
+            if root.active-view == 0 : VerticalLayout {
+                padding: 28px;
+                spacing: 22px;
+
+                HorizontalLayout {
+                    spacing: 10px;
+                    alignment: start;
+
+                    for c[idx] in [
+                        { name: "Nintendo NES (3)",     col: Theme.nes  },
+                        { name: "Super Nintendo (2)",   col: Theme.snes },
+                        { name: "Game Boy / Color (2)", col: Theme.gb   },
+                        { name: "Game Boy Advance (2)", col: Theme.gba  },
+                    ] : Rectangle {
+                        height: 42px;
+                        width: 185px;
+                        border-radius: 6px;
+                        background: root.active-console == idx ? c.col : Theme.bg-panel;
+                        border-width: 1px;
+                        border-color: root.active-console == idx ? c.col : Theme.border;
+
+                        Text {
+                            text: c.name;
+                            color: root.active-console == idx ? #FFFFFF : Theme.text-secondary;
+                            font-size: 13px;
+                            font-weight: 700;
+                        }
+
+                        TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { root.active-console = idx; }
+                        }
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: 20px;
+                    alignment: start;
+
+                    GameCard {
+                        title: "Super Mario Bros. 3";
+                        code: "SMB3";
+                        meta: "4H 12M · 4.2 MB";
+                        console-color: Theme.nes;
+                        selected: root.selected-game == 0;
+                        clicked => { root.selected-game = 0; }
+                    }
+                    GameCard {
+                        title: "Contra";
+                        code: "CTRA";
+                        meta: "1H 45M · 3.1 MB";
+                        console-color: Theme.nes;
+                        selected: root.selected-game == 1;
+                        clicked => { root.selected-game = 1; }
+                    }
+                    GameCard {
+                        title: "The Legend of Zelda";
+                        code: "ZLD1";
+                        meta: "6H 05M · 3.4 MB";
+                        console-color: Theme.nes;
+                        selected: root.selected-game == 2;
+                        clicked => { root.selected-game = 2; }
+                    }
+                }
+
+                Rectangle { vertical-stretch: 1; }
+            }
+
+            // VIEW 1: RECOMPILADOR
+            if root.active-view == 1 : VerticalLayout {
+                padding: 28px;
+                spacing: 20px;
+
+                Text {
+                    text: "Recompilador Estático";
+                    color: Theme.text-primary;
+                    font-size: 26px;
+                    font-weight: 800;
+                }
+
+                Rectangle {
+                    height: 220px;
+                    border-radius: 10px;
+                    background: Theme.bg-panel;
+                    border-width: 2px;
+                    border-color: Theme.border-strong;
+
+                    VerticalLayout {
+                        alignment: center;
+                        spacing: 10px;
+                        Text {
+                            text: "Arrastra tu ROM aquí (.nes, .sfc, .gb, .gba)";
+                            color: Theme.text-primary;
+                            font-size: 18px;
+                            font-weight: 700;
+                            horizontal-alignment: center;
+                        }
+                        Text {
+                            text: "Usando " + root.compile-cores + " núcleos por defecto · Optimización " + (root.fast-opt ? "-O1 Rápido" : "-O2 Balanceado");
+                            color: Theme.text-secondary;
+                            font-size: 13px;
+                            horizontal-alignment: center;
+                        }
+                    }
+                }
+
+                Rectangle { vertical-stretch: 1; }
+            }
+
+            // VIEW 2: CONFIGURACIÓN
+            if root.active-view == 2 : VerticalLayout {
+                padding: 28px;
+                spacing: 18px;
+
+                Text {
+                    text: "Configuración";
+                    color: Theme.text-primary;
+                    font-size: 26px;
+                    font-weight: 800;
+                }
+
+                Rectangle {
+                    height: 82px;
+                    max-width: 720px;
+                    border-radius: 10px;
+                    background: Theme.bg-panel;
+                    border-width: 1px;
+                    border-color: Theme.border;
+
+                    HorizontalLayout {
+                        padding: 18px;
+                        alignment: space-between;
+
+                        VerticalLayout {
+                            spacing: 4px;
+                            alignment: center;
+                            Text { text: "Núcleos de compilación"; color: Theme.text-primary; font-size: 15px; font-weight: 700; }
+                            Text { text: "Limita los núcleos en paralelo (por defecto: 2)."; color: Theme.text-secondary; font-size: 13px; }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            alignment: center;
+
+                            Rectangle {
+                                width: 38px; height: 38px; border-radius: 6px;
+                                background: Theme.bg-card; border-width: 1px; border-color: Theme.border;
+                                Text { text: "-"; color: Theme.text-primary; font-size: 16px; font-weight: 700; }
+                                TouchArea { clicked => { if (root.compile-cores > 1) { root.compile-cores -= 1; } } }
+                            }
+                            Rectangle {
+                                width: 52px; height: 38px; border-radius: 6px;
+                                background: Theme.bg-input; border-width: 1px; border-color: Theme.accent;
+                                Text { text: root.compile-cores; color: Theme.accent; font-size: 15px; font-weight: 800; }
+                            }
+                            Rectangle {
+                                width: 38px; height: 38px; border-radius: 6px;
+                                background: Theme.bg-card; border-width: 1px; border-color: Theme.border;
+                                Text { text: "+"; color: Theme.text-primary; font-size: 16px; font-weight: 700; }
+                                TouchArea { clicked => { if (root.compile-cores < 16) { root.compile-cores += 1; } } }
+                            }
+                        }
+                    }
+                }
+
+                Rectangle { vertical-stretch: 1; }
+            }
+        }
+
+        // ── Bottom Console/Gamepad Action Bar (Signature Slint Gamer Bar) ─
+        Rectangle {
+            height: 46px;
+            background: Theme.bg-panel;
+
+            HorizontalLayout {
+                padding-left: 28px;
+                padding-right: 28px;
+                alignment: space-between;
+
+                HorizontalLayout {
+                    spacing: 18px;
+                    Text { text: "[A] Jugar"; color: Theme.accent; font-size: 12px; font-weight: 700; vertical-alignment: center; }
+                    Text { text: "[X] Importar Recompilado"; color: Theme.text-secondary; font-size: 12px; font-weight: 700; vertical-alignment: center; }
+                    Text { text: "[F11] Pantalla Completa"; color: Theme.text-secondary; font-size: 12px; font-weight: 700; vertical-alignment: center; }
+                }
+
+                Text {
+                    text: "Slint UI · Nativo C++20 · 0% WebView";
+                    color: Theme.text-muted;
+                    font-size: 12px;
+                    font-weight: 600;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+}

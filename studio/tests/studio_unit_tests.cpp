@@ -10,6 +10,7 @@
 #include "studio/packager.h"
 #include "studio/pipeline.h"
 #include "studio/rom_detector.h"
+#include "studio/settings.h"
 
 using namespace dragon::studio;
 
@@ -686,6 +687,84 @@ void test_diagnose_and_repair() {
     std::cout << "  Diagnostic honest-contract test passed!\n";
 }
 
+void test_pipeline_compile_settings() {
+    std::cout << "[Test] pipeline compile threads & optimization defaults...\n";
+    Pipeline pipeline;
+    assert(pipeline.max_compile_threads() == 2U);
+    assert(pipeline.compile_opt_level() == CompileOptLevel::Fast);
+
+    pipeline.set_max_compile_threads(0U);
+    assert(pipeline.max_compile_threads() == 1U);
+
+    pipeline.set_max_compile_threads(2U);
+    assert(pipeline.max_compile_threads() == 2U);
+
+    pipeline.set_compile_opt_level(CompileOptLevel::Balanced);
+    assert(pipeline.compile_opt_level() == CompileOptLevel::Balanced);
+
+    pipeline.set_compile_opt_level(CompileOptLevel::None);
+    assert(pipeline.compile_opt_level() == CompileOptLevel::None);
+
+    pipeline.set_compile_opt_level(CompileOptLevel::Aggressive);
+    assert(pipeline.compile_opt_level() == CompileOptLevel::Aggressive);
+
+    assert(pipeline.compile_log().empty());
+    std::cout << "  Pipeline compile settings test passed!\n";
+}
+
+void test_studio_settings() {
+    std::cout << "[Test] studio settings persistence & defaults...\n";
+    const auto temp_dir = std::filesystem::temp_directory_path() / "dragon_test_settings";
+    std::filesystem::create_directories(temp_dir);
+    const auto cfg_path = temp_dir / "settings.toml";
+
+    StudioSettings def = SettingsStore::defaults();
+    assert(def.max_compile_threads == Pipeline::kDefaultCompileThreads);
+    assert(def.opt_level == CompileOptLevel::Fast);
+    assert(def.dark_mode == true);
+    assert(def.accent_color == AccentColor::Orange);
+    assert(def.auto_save_state == true);
+    assert(def.default_crt_filter == false);
+    assert(!def.export_directory.empty());
+
+    assert(std::string(opt_level_flag(CompileOptLevel::None)) == "-O0");
+    assert(std::string(opt_level_flag(CompileOptLevel::Fast)) == "-O1");
+    assert(std::string(opt_level_flag(CompileOptLevel::Balanced)) == "-O2");
+    assert(std::string(opt_level_flag(CompileOptLevel::Aggressive)) == "-O3");
+    assert(opt_level_from_flag("-O0") == CompileOptLevel::None);
+    assert(opt_level_from_flag("-O2") == CompileOptLevel::Balanced);
+    assert(opt_level_from_flag("-O3") == CompileOptLevel::Aggressive);
+
+    assert(accent_color_from_key(accent_color_key(AccentColor::Cyan)) == AccentColor::Cyan);
+    assert(accent_color_from_key(accent_color_key(AccentColor::Purple)) == AccentColor::Purple);
+    assert(accent_color_from_key(accent_color_key(AccentColor::Green)) == AccentColor::Green);
+
+    StudioSettings custom;
+    custom.max_compile_threads = 8;
+    custom.opt_level = CompileOptLevel::Aggressive;
+    custom.export_directory = temp_dir / "MyExports";
+    custom.dark_mode = false;
+    custom.accent_color = AccentColor::Purple;
+    custom.auto_save_state = false;
+    custom.default_crt_filter = true;
+
+    assert(SettingsStore::save(custom, cfg_path));
+    assert(std::filesystem::exists(cfg_path));
+
+    StudioSettings loaded;
+    assert(SettingsStore::load(loaded, cfg_path));
+    assert(loaded.max_compile_threads == 8);
+    assert(loaded.opt_level == CompileOptLevel::Aggressive);
+    assert(loaded.export_directory == custom.export_directory);
+    assert(loaded.dark_mode == false);
+    assert(loaded.accent_color == AccentColor::Purple);
+    assert(loaded.auto_save_state == false);
+    assert(loaded.default_crt_filter == true);
+
+    std::filesystem::remove_all(temp_dir);
+    std::cout << "  Studio settings test passed!\n";
+}
+
 }  // namespace
 
 int main() {
@@ -697,6 +776,8 @@ int main() {
     test_packager();
     test_packager_windows();
     test_pipeline_toml_generation();
+    test_pipeline_compile_settings();
+    test_studio_settings();
     test_pipeline_compile_nes();
     test_pipeline_compile_snes();
     test_pipeline_compile_gb();

@@ -577,6 +577,57 @@ size_t sanitize_learned_entry_points(const std::filesystem::path& toml_path,
     return pruned;
 }
 
+// Returns true if `obj_path` already exists and is at least as new as `c_path`
+// and any generated header in `gen_dir`, allowing fast incremental recompilation.
+bool is_object_up_to_date(const std::filesystem::path& c_path,
+                          const std::filesystem::path& obj_path,
+                          const std::filesystem::path& gen_dir) {
+    std::error_code ec;
+    if (!std::filesystem::exists(obj_path, ec) || std::filesystem::file_size(obj_path, ec) == 0U) {
+        return false;
+    }
+    const auto obj_time = std::filesystem::last_write_time(obj_path, ec);
+    if (ec) {
+        return false;
+    }
+    const auto src_time = std::filesystem::last_write_time(c_path, ec);
+    if (ec || src_time > obj_time) {
+        return false;
+    }
+    for (const auto& entry : std::filesystem::directory_iterator(gen_dir, ec)) {
+        if (entry.is_regular_file(ec) && entry.path().extension() == ".h") {
+            const auto h_time = std::filesystem::last_write_time(entry.path(), ec);
+            if (!ec && h_time > obj_time) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool has_fast_lld_linker(const std::string& cxx_bin) {
+    if (cxx_bin.find("clang") == std::string::npos) {
+        return false;
+    }
+    std::error_code ec;
+    const std::filesystem::path bin_path(cxx_bin);
+#if defined(_WIN32)
+    if (bin_path.has_parent_path() &&
+        std::filesystem::exists(bin_path.parent_path() / "ld.lld.exe", ec)) {
+        return true;
+    }
+    char buf[MAX_PATH];
+    return SearchPathA(NULL, "ld.lld", ".exe", sizeof(buf), buf, NULL) > 0;
+#else
+    if (bin_path.has_parent_path() &&
+        std::filesystem::exists(bin_path.parent_path() / "ld.lld", ec)) {
+        return true;
+    }
+    return std::filesystem::exists("/usr/bin/ld.lld", ec) ||
+           std::filesystem::exists("/usr/local/bin/ld.lld", ec);
+#endif
+}
+
 }  // namespace
 
 Pipeline::Pipeline() = default;
@@ -589,6 +640,24 @@ Pipeline::~Pipeline() {
     if (game_monitor_thread_.joinable()) {
         game_monitor_thread_.join();
     }
+}
+
+void Pipeline::set_max_compile_threads(unsigned int threads) {
+    const unsigned int hw = std::thread::hardware_concurrency();
+    const unsigned int upper = (hw > 0U) ? hw : 16U;
+    max_compile_threads_.store(std::clamp(threads, 1U, upper));
+}
+
+unsigned int Pipeline::max_compile_threads() const {
+    return max_compile_threads_.load();
+}
+
+void Pipeline::set_compile_opt_level(CompileOptLevel level) {
+    compile_opt_level_.store(level);
+}
+
+CompileOptLevel Pipeline::compile_opt_level() const {
+    return compile_opt_level_.load();
 }
 
 void Pipeline::cancel() {
@@ -623,6 +692,23 @@ std::string Pipeline::current_step_description() const {
 std::string Pipeline::error_message() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return error_msg_;
+}
+
+std::vector<CompileLogEntry> Pipeline::compile_log() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return compile_log_;
+}
+
+void Pipeline::append_log(LogLevel level, const std::string& msg) {
+    const auto now = std::chrono::steady_clock::now();
+    const int total_s = std::max(
+        0,
+        static_cast<int>(
+            std::chrono::duration_cast<std::chrono::seconds>(now - pipeline_start_time_).count()));
+    char tbuf[16];
+    std::snprintf(tbuf, sizeof(tbuf), "%02d:%02d", total_s / 60, total_s % 60);
+    std::lock_guard<std::mutex> lock(mutex_);
+    compile_log_.push_back(CompileLogEntry{tbuf, level, msg});
 }
 
 std::string Pipeline::last_game_error() const {
@@ -930,7 +1016,20 @@ bool Pipeline::compile_c_to_binary(const RomInfo& rom, const std::filesystem::pa
         return false;
     }
 
-    const std::string c_opt_flag = (rom.platform == RomPlatform::GameBoyAdvance) ? "-O1" : "-O2";
+    const auto opt_to_flag = [](CompileOptLevel lvl) -> std::string {
+        switch (lvl) {
+            case CompileOptLevel::None:
+                return "-O0";
+            case CompileOptLevel::Fast:
+                return "-O1";
+            case CompileOptLevel::Balanced:
+                return "-O2";
+            case CompileOptLevel::Aggressive:
+                return "-O3";
+        }
+        return "-O1";
+    };
+    const std::string c_opt_flag = opt_to_flag(compile_opt_level_.load());
     const std::string cc_bin = find_c_compiler();
     const std::string cxx_bin = find_cxx_compiler();
     std::vector<std::filesystem::path> obj_files;
@@ -947,9 +1046,9 @@ bool Pipeline::compile_c_to_binary(const RomInfo& rom, const std::filesystem::pa
     std::string thread_error_msg;
     std::mutex error_mutex;
 
-    const unsigned int hw_threads = std::thread::hardware_concurrency();
-    const unsigned int thread_count = std::max(
-        1U, std::min(hw_threads > 0 ? hw_threads : 4U, static_cast<unsigned int>(c_files.size())));
+    const unsigned int configured_threads = std::max(1U, max_compile_threads_.load());
+    const unsigned int thread_count =
+        std::max(1U, std::min(configured_threads, static_cast<unsigned int>(c_files.size())));
 
     std::vector<std::thread> workers;
     workers.reserve(thread_count);
@@ -964,45 +1063,48 @@ bool Pipeline::compile_c_to_binary(const RomInfo& rom, const std::filesystem::pa
                 const auto& c_path = c_files[idx];
                 const auto& obj_path = obj_files[idx];
 
-                const std::vector<std::string> cc_argv = {
-                    cc_bin,
-                    c_opt_flag,
-                    "-std=c99",
-                    "-c",
-                    c_path.string(),
-                    "-o",
-                    obj_path.string(),
-                    "-I" + gen_dir.string(),
-                    "-I" + common_inc.string(),
-                    "-I" + runtime_inc.string(),
-                };
+                if (!is_object_up_to_date(c_path, obj_path, gen_dir)) {
+                    const std::vector<std::string> cc_argv = {
+                        cc_bin,
+                        c_opt_flag,
+                        "-std=c99",
+                        "-c",
+                        c_path.string(),
+                        "-o",
+                        obj_path.string(),
+                        "-I" + gen_dir.string(),
+                        "-I" + common_inc.string(),
+                        "-I" + runtime_inc.string(),
+                    };
 
-                std::string spawn_err;
-                const ProcResult r = run_process(cc_argv, &spawn_err);
-                if (!r.spawned) {
-                    compile_failed.store(true);
-                    std::lock_guard<std::mutex> lock(error_mutex);
-                    if (thread_error_msg.empty()) {
+                    std::string spawn_err;
+                    const ProcResult r = run_process(cc_argv, &spawn_err);
+                    if (!r.spawned) {
+                        compile_failed.store(true);
+                        std::lock_guard<std::mutex> lock(error_mutex);
+                        if (thread_error_msg.empty()) {
 #if defined(_WIN32)
-                        thread_error_msg =
-                            "No se pudo ejecutar Clang/GCC (" + cc_bin + "): " + spawn_err +
-                            "\nAsegurate de que LLVM/Clang o MinGW este instalado y en el PATH.";
+                            thread_error_msg = "No se pudo ejecutar Clang/GCC (" + cc_bin +
+                                               "): " + spawn_err +
+                                               "\nAsegurate de que LLVM/Clang o MinGW este "
+                                               "instalado y en el PATH.";
 #else
-                        thread_error_msg =
-                            "No se pudo ejecutar Clang/GCC (" + cc_bin + "): " + spawn_err +
-                            "\nAsegurate de que Clang o GCC este instalado en tu sistema.";
+                            thread_error_msg =
+                                "No se pudo ejecutar Clang/GCC (" + cc_bin + "): " + spawn_err +
+                                "\nAsegurate de que Clang o GCC este instalado en tu sistema.";
 #endif
+                        }
+                        break;
                     }
-                    break;
-                }
-                if (r.exit_code != 0) {
-                    compile_failed.store(true);
-                    std::lock_guard<std::mutex> lock(error_mutex);
-                    if (thread_error_msg.empty()) {
-                        thread_error_msg = "Fallo compilando C99 (" + c_path.filename().string() +
-                                           "):\n" + r.output;
+                    if (r.exit_code != 0) {
+                        compile_failed.store(true);
+                        std::lock_guard<std::mutex> lock(error_mutex);
+                        if (thread_error_msg.empty()) {
+                            thread_error_msg = "Fallo compilando C99 (" +
+                                               c_path.filename().string() + "):\n" + r.output;
+                        }
+                        break;
                     }
-                    break;
                 }
 
                 const size_t done = completed_count.fetch_add(1) + 1;
@@ -1011,7 +1113,8 @@ bool Pipeline::compile_c_to_binary(const RomInfo& rom, const std::filesystem::pa
                                                  static_cast<float>(c_files.size()));
                     std::lock_guard<std::mutex> lock(mutex_);
                     step_desc_ = "Compilando modulo C99 (" + std::to_string(done) + "/" +
-                                 std::to_string(c_files.size()) + ") en paralelo...";
+                                 std::to_string(c_files.size()) + ", " +
+                                 std::to_string(thread_count) + " nucleos)...";
                 }
             }
         });
@@ -1038,7 +1141,7 @@ bool Pipeline::compile_c_to_binary(const RomInfo& rom, const std::filesystem::pa
     const auto main_obj = gen_dir / "game_main.o";
     const std::vector<std::string> cpp_argv = {
         cxx_bin,
-        "-O2",
+        c_opt_flag,
         "-std=c++20",
         "-c",
         main_cpp.string(),
@@ -1072,11 +1175,15 @@ bool Pipeline::compile_c_to_binary(const RomInfo& rom, const std::filesystem::pa
         return false;
     }
 
+    const bool use_lld = has_fast_lld_linker(cxx_bin);
 #if defined(_WIN32)
     // 3. Link all object files into the final native PE (.exe).
     // -mwindows ensures the executable runs as a pure GUI application without opening a terminal
     // window.
-    std::vector<std::string> link_argv = {cxx_bin, "-O2", "-mwindows"};
+    std::vector<std::string> link_argv = {cxx_bin, c_opt_flag, "-mwindows"};
+    if (use_lld) {
+        link_argv.push_back("-fuse-ld=lld");
+    }
     for (const auto& obj : obj_files) {
         link_argv.push_back(obj.string());
     }
@@ -1088,7 +1195,10 @@ bool Pipeline::compile_c_to_binary(const RomInfo& rom, const std::filesystem::pa
     link_argv.push_back(out_bin.string());
 #else
     // 3. Link all object files into the final native ELF.
-    std::vector<std::string> link_argv = {cxx_bin, "-O2"};
+    std::vector<std::string> link_argv = {cxx_bin, c_opt_flag};
+    if (use_lld) {
+        link_argv.push_back("-fuse-ld=lld");
+    }
     for (const auto& obj : obj_files) {
         link_argv.push_back(obj.string());
     }
@@ -1272,6 +1382,26 @@ bool Pipeline::compile_windows_binary(const RomInfo& rom, const std::filesystem:
 
 void Pipeline::run_worker(RomInfo rom) {
     const auto start_time = std::chrono::steady_clock::now();
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        pipeline_start_time_ = start_time;
+        compile_log_.clear();
+    }
+    append_log(LogLevel::Info, "ROM detectada: " + rom.platform_name());
+    if (rom.platform == RomPlatform::SNES) {
+        char buf[64];
+        std::snprintf(buf, sizeof(buf), "Checksum: $%04X (%s)", rom.checksum,
+                      rom.fast_rom ? "FastROM" : "SlowROM");
+        append_log(LogLevel::Message, buf);
+    } else if (rom.platform == RomPlatform::NES) {
+        append_log(LogLevel::Message, "Mapper " + std::to_string(rom.mapper) + " (iNES)");
+    } else if (rom.platform == RomPlatform::GameBoyAdvance) {
+        append_log(LogLevel::Message, "GBA " + (rom.game_code.empty() ? "AGB" : rom.game_code) +
+                                          " (" + rom.save_type_str + ")");
+    } else {
+        append_log(LogLevel::Message,
+                   rom.mbc_type_str + " (" + std::to_string(rom.rom_size_kb) + " KB)");
+    }
 
     // 1. Prepare cache directory
     const auto cache_base = find_repo_root() / "build" / "studio_cache" / rom.sha1;
@@ -1325,6 +1455,7 @@ void Pipeline::run_worker(RomInfo rom) {
         std::lock_guard<std::mutex> lock(mutex_);
         step_desc_ = "Desensamblando vectores y analizando flujo de control...";
     }
+    append_log(LogLevel::Message, "Iniciando desensamblado recursivo...");
 
     std::string tool_name = "nesrecomp";
     if (rom.platform == RomPlatform::SNES) {
@@ -1395,6 +1526,7 @@ void Pipeline::run_worker(RomInfo rom) {
         step_desc_ = "Compilando binario nativo Linux x86_64 con Clang...";
 #endif
     }
+    append_log(LogLevel::Info, std::to_string(max_compile_threads_.load()) + " nucleos asignados");
 
     if (!compile_c_to_binary(rom, gen_dir, out_bin)) {
         stage_ = PipelineStage::Failed;
@@ -1437,9 +1569,12 @@ void Pipeline::run_worker(RomInfo rom) {
 
     progress_ = 1.0f;
     stage_ = PipelineStage::Ready;
+    append_log(LogLevel::Success, "Compilacion completada");
+    append_log(LogLevel::Success,
+               funcs_found == 0 ? "Modo interprete activo" : "Codigo 100% optimizado");
 
     if (relaunch_after_compile_.exchange(false)) {
-        launch_game(last_fullscreen_, last_crt_);
+        launch_game(last_fullscreen_, last_crt_, last_autosave_);
     }
 }
 
@@ -1598,7 +1733,7 @@ void Pipeline::stop_game() {
     }
 }
 
-bool Pipeline::launch_game(bool fullscreen, bool crt_filter) {
+bool Pipeline::launch_game(bool fullscreen, bool crt_filter, bool auto_save_state) {
     if (stage_.load() != PipelineStage::Ready) {
         return false;
     }
@@ -1608,6 +1743,7 @@ bool Pipeline::launch_game(bool fullscreen, bool crt_filter) {
 
     last_fullscreen_ = fullscreen;
     last_crt_ = crt_filter;
+    last_autosave_ = auto_save_state;
 
     const auto bin = output_binary();
     if (!std::filesystem::exists(bin)) {
@@ -1631,6 +1767,10 @@ bool Pipeline::launch_game(bool fullscreen, bool crt_filter) {
     }
     if (crt_filter) {
         arg_strings.push_back("--crt");
+    }
+    if (auto_save_state && !workspace_dir_.empty()) {
+        arg_strings.push_back("--save-state");
+        arg_strings.push_back((workspace_dir_ / "autosave.state").string());
     }
     try {
         if (std::filesystem::exists(toml_path_)) {

@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DragonRecomp Studio — 3 Propuestas Nuevas de Diseño UX/UI</title>
+  <style>
+    /* =========================================================================
+       DRAGONRECOMP STUDIO — 3 NUEVAS DIRECCIONES DE DISEÑO UX/UI
+       Regla estricta: 100% superficies sólidas, CERO gradientes, tema oscuro.
+       ========================================================================= */
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: #060608;
+      color: #F4F4F5;
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* ── Selector superior de Conceptos ─────────────────────────────────── */
+    .concept-bar {
+      height: 56px;
+      background: #08080A;
+      border-bottom: 1px solid #222228;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 22px;
+      gap: 16px;
+    }
+    .concept-bar-left {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: #8A8A98;
+      text-transform: uppercase;
+    }
+    .concept-switcher {
+      display: flex;
+      gap: 8px;
+    }
+    .concept-pill {
+      height: 36px;
+      padding: 0 16px;
+      border-radius: 6px;
+      border: 1px solid #26262E;
+      background: #121216;
+      color: #A1A1AA;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.14s ease;
+    }
+    .concept-pill:hover { background: #1B1B22; color: #FFFFFF; }
+    .concept-pill .swatch { width: 10px; height: 10px; border-radius: 2px; }
+    .concept-pill.active[data-c="obsidian"] { background: #FF2E4C; color: #FFFFFF; border-color: #FF2E4C; }
+    .concept-pill.active[data-c="monolith"] { background: #C6FF00; color: #0B0D0B; border-color: #C6FF00; }
+    .concept-pill.active[data-c="midnight"] { background: #FFB800; color: #0B0D14; border-color: #FFB800; }
+    .concept-pill.active .swatch { background: currentColor !important; }
+
+    .concept-desc {
+      font-size: 12px;
+      color: #8A8A98;
+      font-family: "JetBrains Mono", monospace;
+    }
+
+    .viewport {
+      height: calc(100vh - 56px);
+      position: relative;
+    }
+    .concept-screen {
+      display: none;
+      width: 100%;
+      height: 100%;
+    }
+    .concept-screen.active { display: flex; }
+
+    /* =========================================================================
+       CONCEPTO 1: OBSIDIAN ARCADE
+       Carbón puro (#09090B) + Carmesí Eléctrico (#FF2E4C) + Dock lateral iconos
+       ========================================================================= */
+    .c-obsidian {
+      --bg: #09090B;
+      --surface: #121216;
+      --card: #1A1A20;
+      --card-h: #23232C;
+      --border: #272730;
+      --text: #FAFAFA;
+      --muted: #9898A6;
+      --accent: #FF2E4C;
+      --accent-ink: #FFFFFF;
+      --ok: #22C55E;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .obs-rail {
+      width: 74px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 18px 0;
+      gap: 12px;
+    }
+    .obs-logo {
+      width: 42px; height: 42px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 900;
+      font-size: 16px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 14px;
+      letter-spacing: -0.5px;
+    }
+    .obs-icon-btn {
+      width: 46px; height: 46px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font-size: 18px;
+      font-weight: 800;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      position: relative;
+    }
+    .obs-icon-btn:hover { background: var(--card); color: var(--text); }
+    .obs-icon-btn.active {
+      background: var(--card);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .obs-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .obs-topbar {
+      height: 64px;
+      padding: 0 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .obs-chips { display: flex; gap: 8px; }
+    .obs-chip {
+      height: 36px; padding: 0 16px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 13px; font-weight: 700;
+      cursor: pointer;
+    }
+    .obs-chip:hover { color: var(--text); border-color: #3E3E4C; }
+    .obs-chip.active { background: var(--text); color: #09090B; border-color: var(--text); }
+
+    .obs-body {
+      flex: 1;
+      padding: 28px 32px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    .obs-spotlight {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 26px 30px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 24px;
+    }
+    .obs-tag {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+    .obs-spotlight h1 { font-size: 32px; font-weight: 900; letter-spacing: -0.6px; margin-bottom: 8px; }
+    .obs-spotlight p { color: var(--muted); font-size: 14px; max-width: 560px; line-height: 1.5; }
+    .obs-stats { display: flex; gap: 22px; margin-top: 16px; }
+    .obs-stat span { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; font-weight: 700; }
+    .obs-stat strong { font-size: 15px; font-family: "JetBrains Mono", monospace; }
+
+    .obs-cta-col { display: flex; flex-direction: column; gap: 10px; min-width: 210px; }
+    .obs-play {
+      height: 52px; border-radius: 10px; border: none;
+      background: var(--accent); color: #fff;
+      font-size: 15px; font-weight: 900; letter-spacing: 0.6px; cursor: pointer;
+    }
+    .obs-play:hover { background: #FF4762; }
+    .obs-sec-btn {
+      height: 40px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--card); color: var(--text);
+      font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    .obs-sec-btn:hover { background: var(--card-h); }
+
+    .obs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+      gap: 20px;
+    }
+    .obs-card { cursor: pointer; display: flex; flex-direction: column; gap: 10px; }
+    .obs-cover {
+      aspect-ratio: 3/4;
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.14s ease, border-color 0.14s ease;
+    }
+    .obs-card:hover .obs-cover, .obs-card.sel .obs-cover {
+      border-color: var(--accent);
+      transform: translateY(-4px);
+    }
+    .obs-code { font-family: "JetBrains Mono", monospace; font-size: 30px; font-weight: 900; }
+    .obs-name { font-size: 14px; font-weight: 700; }
+    .obs-card.sel .obs-name, .obs-card:hover .obs-name { color: var(--accent); }
+
+    /* =========================================================================
+       CONCEPTO 2: MONOLITH STUDIO
+       Grafito cálido (#0E0F0E) + Lima Ácido (#C6FF00) + Estética Industrial Bento
+       ========================================================================= */
+    .c-monolith {
+      --bg: #0E0F0E;
+      --surface: #151715;
+      --card: #1D201D;
+      --border: #2C312C;
+      --text: #F4F5F0;
+      --muted: #8E968E;
+      --accent: #C6FF00;
+      --accent-ink: #0B0D0B;
+      --orange: #FF6B2B;
+      background: var(--bg);
+      color: var(--text);
+      flex-direction: column;
+    }
+
+    .mono-header {
+      height: 68px;
+      padding: 0 32px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .mono-brand {
+      display: flex; align-items: center; gap: 12px;
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 800; font-size: 16px; letter-spacing: 0.5px;
+    }
+    .mono-dot { width: 14px; height: 14px; background: var(--accent); border-radius: 3px; }
+    .mono-nav { display: flex; gap: 4px; background: var(--bg); padding: 4px; border: 1px solid var(--border); border-radius: 8px; }
+    .mono-tab {
+      height: 36px; padding: 0 18px; border: none; border-radius: 5px;
+      background: transparent; color: var(--muted); font-size: 13px; font-weight: 800; cursor: pointer;
+    }
+    .mono-tab.active { background: var(--accent); color: var(--accent-ink); }
+
+    .mono-status {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--card); border: 1px solid var(--border);
+      padding: 7px 14px; border-radius: 6px;
+      font-family: "JetBrains Mono", monospace; font-size: 12px; font-weight: 700;
+      cursor: pointer;
+    }
+    .mono-status:hover { border-color: var(--accent); }
+
+    .mono-body {
+      flex: 1;
+      padding: 28px 32px;
+      overflow-y: auto;
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 24px;
+      align-items: start;
+    }
+    .mono-bento-top {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+    .mono-console-tile {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .mono-console-tile:hover { background: var(--card); }
+    .mono-console-tile.active {
+      background: var(--accent);
+      color: var(--accent-ink);
+      border-color: var(--accent);
+    }
+    .mono-console-tile .k { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 800; opacity: 0.75; }
+    .mono-console-tile .v { font-size: 16px; font-weight: 800; }
+
+    .mono-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 18px;
+    }
+    .mono-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .mono-card:hover, .mono-card.sel { border-color: var(--accent); }
+    .mono-art {
+      aspect-ratio: 3/4;
+      background: var(--card);
+      border-radius: 8px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .mono-side {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .mono-btn-primary {
+      height: 48px; border-radius: 8px; border: none;
+      background: var(--accent); color: var(--accent-ink);
+      font-size: 14px; font-weight: 900; cursor: pointer;
+    }
+    .mono-btn-primary:hover { background: #D4FF3D; }
+    .mono-btn-ghost {
+      height: 40px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--card); color: var(--text);
+      font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    .mono-kv {
+      display: flex; justify-content: space-between;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .mono-kv span { color: var(--muted); }
+    .mono-kv strong { font-family: "JetBrains Mono", monospace; }
+
+    /* =========================================================================
+       CONCEPTO 3: MIDNIGHT CARTRIDGE
+       Índigo profundo (#0D0F1A) + Ámbar Solar (#FFB800) + Estética Coleccionista
+       ========================================================================= */
+    .c-midnight {
+      --bg: #0D0F1A;
+      --surface: #141829;
+      --card: #1C2138;
+      --border: #2B3354;
+      --text: #F2F4FC;
+      --muted: #939DC2;
+      --accent: #FFB800;
+      --accent-ink: #0C0E18;
+      --mint: #2EE59D;
+      background: var(--bg);
+      color: var(--text);
+      flex-direction: column;
+    }
+
+    .mid-header {
+      height: 76px;
+      padding: 0 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .mid-brand { display: flex; align-items: center; gap: 14px; }
+    .mid-mark {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: var(--accent); color: var(--accent-ink);
+      font-weight: 900; font-size: 16px; display: grid; place-items: center;
+    }
+    .mid-nav { display: flex; gap: 26px; }
+    .mid-link {
+      background: none; border: none; color: var(--muted);
+      font-size: 15px; font-weight: 700; cursor: pointer; padding: 8px 0;
+      border-bottom: 3px solid transparent;
+    }
+    .mid-link.active { color: var(--text); border-bottom-color: var(--accent); }
+
+    .mid-body {
+      flex: 1;
+      padding: 32px 40px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+    .mid-filter-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .mid-tabs { display: flex; gap: 10px; }
+    .mid-tab {
+      height: 44px; padding: 0 22px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--muted); font-size: 14px; font-weight: 700; cursor: pointer;
+    }
+    .mid-tab.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+    .mid-shelf {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+      gap: 26px;
+    }
+    .mid-card { cursor: pointer; display: flex; flex-direction: column; gap: 12px; }
+    .mid-cover {
+      aspect-ratio: 3/4;
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .mid-card:hover .mid-cover, .mid-card.sel .mid-cover {
+      border-color: var(--accent);
+      transform: translateY(-6px);
+    }
+    .mid-footer-bar {
+      height: 76px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 0 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .mid-play-btn {
+      height: 46px; padding: 0 28px; border-radius: 10px; border: none;
+      background: var(--accent); color: var(--accent-ink);
+      font-size: 14px; font-weight: 900; cursor: pointer;
+    }
+    .mid-play-btn:hover { background: #FFC833; }
+
+    /* Shared Settings Widget */
+    .cores-box {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(0,0,0,0.25); padding: 4px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12);
+    }
+    .cores-box button {
+      width: 32px; height: 32px; border-radius: 6px; border: none;
+      background: rgba(255,255,255,0.1); color: #fff; font-weight: 900; cursor: pointer;
+    }
+    .cores-box span {
+      min-width: 36px; text-align: center; font-family: "JetBrains Mono", monospace; font-weight: 800;
+    }
+
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #14141A; border: 2px solid #FFFFFF; color: #FFFFFF;
+      padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 700;
+      opacity: 0; pointer-events: none; transition: opacity 0.18s ease; z-index: 99;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <!-- Selector global de los 3 conceptos nuevos -->
+  <div class="concept-bar">
+    <div class="concept-bar-left">NUEVAS PROPUESTAS UX/UI · SIN GRADIENTES</div>
+    <div class="concept-switcher">
+      <button class="concept-pill active" data-c="obsidian"><span class="swatch" style="background:#FF2E4C"></span> 1. Obsidian Arcade</button>
+      <button class="concept-pill" data-c="monolith"><span class="swatch" style="background:#C6FF00"></span> 2. Monolith Studio</button>
+      <button class="concept-pill" data-c="midnight"><span class="swatch" style="background:#FFB800"></span> 3. Midnight Cartridge</button>
+    </div>
+    <div class="concept-desc" id="conceptDesc">Carbón + Carmesí · Dock lateral + Spotlight</div>
+  </div>
+
+  <div class="viewport">
+    <!-- =====================================================================
+         CONCEPTO 1: OBSIDIAN ARCADE (Carbón puro + Rojo Carmesí Eléctrico)
+         ===================================================================== -->
+    <section class="concept-screen c-obsidian active" id="screen-obsidian">
+      <aside class="obs-rail">
+        <div class="obs-logo">DR</div>
+        <button class="obs-icon-btn active" title="Biblioteca" onclick="toast('Obsidian: Vista Biblioteca')">▦</button>
+        <button class="obs-icon-btn" title="Recompilador" onclick="toast('Obsidian: Vista Recompilador (2 núcleos · -O1)')">⚡</button>
+        <button class="obs-icon-btn" title="Importar Recompilado" onclick="toast('Obsidian: Importar carpeta portable')">+</button>
+        <div style="flex:1"></div>
+        <button class="obs-icon-btn" title="Configuración (2 núcleos)" onclick="toast('Obsidian: Configuración — 2 núcleos por defecto')">⚙</button>
+      </aside>
+
+      <div class="obs-main">
+        <header class="obs-topbar">
+          <div class="obs-chips" id="obsChips">
+            <button class="obs-chip active" data-con="nes">NES (3)</button>
+            <button class="obs-chip" data-con="snes">SNES (2)</button>
+            <button class="obs-chip" data-con="gb">GB / GBC (2)</button>
+            <button class="obs-chip" data-con="gba">GBA (2)</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="cores-box">
+              <button onclick="chgCores(-1)">-</button>
+              <span class="core-sync">2</span>
+              <button onclick="chgCores(1)">+</button>
+            </div>
+            <button class="obs-sec-btn" style="padding:0 16px;" onclick="toast('Importando juego recompilado...')">+ Importar</button>
+          </div>
+        </header>
+
+        <div class="obs-body">
+          <div class="obs-spotlight">
+            <div>
+              <span class="obs-tag" id="obsTag">NES · NATIVO C99</span>
+              <h1 id="obsTitle">Super Mario Bros. 3</h1>
+              <p>Ejecutable nativo x86_64 listo para arrancar al instante. Cero emulación de CPU, audio y PPU sincronizados a 60 FPS exactos.</p>
+              <div class="obs-stats">
+                <div class="obs-stat"><span>Tiempo</span><strong id="obsTime">4h 12m</strong></div>
+                <div class="obs-stat"><span>Funciones</span><strong id="obsFuncs">1,482</strong></div>
+                <div class="obs-stat"><span>Compilación</span><strong class="core-label">2 Núcleos · -O1</strong></div>
+              </div>
+            </div>
+            <div class="obs-cta-col">
+              <button class="obs-play" onclick="toast('▶ Lanzando binario nativo...')">▶ JUGAR AHORA</button>
+              <button class="obs-sec-btn" onclick="toast('Abriendo en Recompilador...')">Recompilar / Ajustes</button>
+            </div>
+          </div>
+
+          <div class="obs-grid" id="obsGrid"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         CONCEPTO 2: MONOLITH STUDIO (Grafito cálido + Lima Ácido Industrial)
+         ===================================================================== -->
+    <section class="concept-screen c-monolith" id="screen-monolith">
+      <header class="mono-header">
+        <div class="mono-brand"><span class="mono-dot"></span> DRAGONRECOMP // STUDIO</div>
+        <nav class="mono-nav">
+          <button class="mono-tab active" onclick="toast('Monolith: Biblioteca')">BIBLIOTECA</button>
+          <button class="mono-tab" onclick="toast('Monolith: Recompilador')">RECOMPILADOR</button>
+          <button class="mono-tab" onclick="toast('Monolith: Configuración')">AJUSTES</button>
+        </nav>
+        <div class="mono-status" onclick="chgCores(1)" title="Clic para cambiar núcleos">
+          <span style="color:var(--accent)">●</span>
+          <span class="core-label">2 NÚCLEOS · -O1</span>
+        </div>
+      </header>
+
+      <div class="mono-body">
+        <div>
+          <div class="mono-bento-top" id="monoTiles">
+            <div class="mono-console-tile active" data-con="nes"><span class="k">6502 · 3 JUEGOS</span><span class="v">Nintendo NES</span></div>
+            <div class="mono-console-tile" data-con="snes"><span class="k">65816 · 2 JUEGOS</span><span class="v">Super Nintendo</span></div>
+            <div class="mono-console-tile" data-con="gb"><span class="k">SM83 · 2 JUEGOS</span><span class="v">Game Boy</span></div>
+            <div class="mono-console-tile" data-con="gba"><span class="k">ARM7 · 2 JUEGOS</span><span class="v">GB Advance</span></div>
+          </div>
+          <div class="mono-grid" id="monoGrid"></div>
+        </div>
+
+        <aside class="mono-side">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);font-weight:800;">INSPECTOR PORTABLE</div>
+          <h2 id="monoTitle" style="font-size:24px;font-weight:900;line-height:1.2;">Super Mario Bros. 3</h2>
+          <div>
+            <div class="mono-kv"><span>Plataforma</span><strong id="monoPlat">NES (6502)</strong></div>
+            <div class="mono-kv"><span>Tiempo jugado</span><strong id="monoTime">4h 12m</strong></div>
+            <div class="mono-kv"><span>Funciones C99</span><strong id="monoFuncs">1,482</strong></div>
+            <div class="mono-kv"><span>Núcleos comp.</span><strong class="core-label">2 Núcleos · -O1</strong></div>
+          </div>
+          <button class="mono-btn-primary" onclick="toast('▶ Ejecutando juego portable...')">▶ EJECUTAR NATIVO</button>
+          <button class="mono-btn-ghost" onclick="toast('Importando recompilado...')">+ Importar Recompilado</button>
+          <button class="mono-btn-ghost" onclick="toast('Buscando carátulas...')">Descargar carátulas</button>
+        </aside>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         CONCEPTO 3: MIDNIGHT CARTRIDGE (Índigo profundo + Ámbar Dorado)
+         ===================================================================== -->
+    <section class="concept-screen c-midnight" id="screen-midnight">
+      <header class="mid-header">
+        <div class="mid-brand">
+          <div class="mid-mark">DR</div>
+          <div>
+            <div style="font-weight:900;font-size:18px;letter-spacing:0.3px;">DragonRecomp</div>
+            <div style="font-size:12px;color:var(--muted);">Colección Nativa Portable</div>
+          </div>
+        </div>
+        <nav class="mid-nav">
+          <button class="mid-link active" onclick="toast('Midnight: Mi Colección')">Mi Colección</button>
+          <button class="mid-link" onclick="toast('Midnight: Recompilar ROM')">Recompilar ROM</button>
+          <button class="mid-link" onclick="toast('Midnight: Preferencias')">Preferencias</button>
+        </nav>
+        <button class="mid-play-btn" style="height:40px;padding:0 18px;font-size:13px;" onclick="toast('Importando juego recompilado...')">+ Importar Juego</button>
+      </header>
+
+      <main class="mid-body">
+        <div class="mid-filter-bar">
+          <div class="mid-tabs" id="midTabs">
+            <button class="mid-tab active" data-con="nes">Nintendo NES</button>
+            <button class="mid-tab" data-con="snes">Super Nintendo</button>
+            <button class="mid-tab" data-con="gb">Game Boy / Color</button>
+            <button class="mid-tab" data-con="gba">Game Boy Advance</button>
+          </div>
+          <div style="font-size:13px;color:var(--muted);font-weight:600;">
+            Compilador: <strong style="color:var(--mint)" class="core-label">2 Núcleos · -O1</strong>
+          </div>
+        </div>
+
+        <div class="mid-shelf" id="midGrid"></div>
+      </main>
+
+      <footer class="mid-footer-bar">
+        <div style="display:flex;align-items:center;gap:16px;">
+          <div style="width:10px;height:10px;border-radius:3px;background:var(--mint);"></div>
+          <div>
+            <div id="midTitle" style="font-size:17px;font-weight:800;">Super Mario Bros. 3</div>
+            <div id="midMeta" style="font-size:12px;color:var(--muted);">4h 12m jugadas · Listo para jugar en Windows y Linux</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <button class="mid-tab" style="height:46px;" onclick="toast('Abriendo carpeta portable...')">Abrir Carpeta</button>
+          <button class="mid-play-btn" onclick="toast('▶ Iniciando juego...')">▶ Jugar Ahora</button>
+        </div>
+      </footer>
+    </section>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const GAMES = [
+      { id: 1, con: 'nes',  code: 'SMB3', title: 'Super Mario Bros. 3', time: '4h 12m', funcs: '1,482', plat: 'NES (6502)',      col: '#EF4444' },
+      { id: 2, con: 'nes',  code: 'CTRA', title: 'Contra',              time: '1h 45m', funcs: '624',   plat: 'NES (6502)',      col: '#EF4444' },
+      { id: 3, con: 'nes',  code: 'ZLD1', title: 'The Legend of Zelda', time: '6h 05m', funcs: '910',   plat: 'NES (6502)',      col: '#EF4444' },
+      { id: 4, con: 'snes', code: 'SMW',  title: 'Super Mario World',   time: '8h 30m', funcs: '2,810', plat: 'SNES (65816)',    col: '#A855F7' },
+      { id: 5, con: 'snes', code: 'SMTR', title: 'Super Metroid',       time: '3h 20m', funcs: '3,412', plat: 'SNES (65816)',    col: '#A855F7' },
+      { id: 6, con: 'gb',   code: 'TTRS', title: 'Tetris DX',           time: '2h 10m', funcs: '412',   plat: 'GB/GBC (SM83)',   col: '#22C55E' },
+      { id: 7, con: 'gb',   code: 'PKCR', title: 'Pokemon Crystal',     time: '12h 40m',funcs: '4,120', plat: 'GB/GBC (SM83)',   col: '#22C55E' },
+      { id: 8, con: 'gba',  code: 'PKFR', title: 'Pokemon FireRed',     time: '9h 15m', funcs: '6,840', plat: 'GBA (ARM7TDMI)',  col: '#3B82F6' },
+      { id: 9, con: 'gba',  code: 'MTRZ', title: 'Metroid Zero Mission',time: '3h 55m', funcs: '5,290', plat: 'GBA (ARM7TDMI)',  col: '#3B82F6' },
+    ];
+
+    const CONCEPT_DESC = {
+      obsidian: 'Carbón + Carmesí · Dock lateral + Spotlight cinematográfico',
+      monolith: 'Grafito + Lima Ácido · Bento industrial minimalista',
+      midnight: 'Índigo + Ámbar Dorado · Coleccionista amplio + barra inferior',
+    };
+
+    let activeCon = 'nes';
+    let selected = GAMES[0];
+    let cores = 2;
+
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => el.classList.remove('show'), 2000);
+    }
+
+    function chgCores(delta) {
+      cores = Math.max(1, Math.min(16, cores + delta));
+      document.querySelectorAll('.core-sync').forEach(e => e.textContent = cores);
+      document.querySelectorAll('.core-label').forEach(e => e.textContent = `${cores} Núcleos · -O1`);
+      toast(`Núcleos de compilación ajustados a ${cores}`);
+    }
+
+    function selectGame(g) {
+      selected = g;
+      document.getElementById('obsTag').textContent = `${g.plat} · NATIVO C99`;
+      document.getElementById('obsTitle').textContent = g.title;
+      document.getElementById('obsTime').textContent = g.time;
+      document.getElementById('obsFuncs').textContent = g.funcs;
+
+      document.getElementById('monoTitle').textContent = g.title;
+      document.getElementById('monoPlat').textContent = g.plat;
+      document.getElementById('monoTime').textContent = g.time;
+      document.getElementById('monoFuncs').textContent = g.funcs;
+
+      document.getElementById('midTitle').textContent = g.title;
+      document.getElementById('midMeta').textContent = `${g.time} jugadas · ${g.plat} · Listo para jugar`;
+      renderAllGrids();
+    }
+
+    function renderAllGrids() {
+      const list = GAMES.filter(g => g.con === activeCon);
+
+      // 1. Obsidian grid
+      const og = document.getElementById('obsGrid');
+      og.innerHTML = '';
+      list.forEach(g => {
+        const d = document.createElement('div');
+        d.className = 'obs-card' + (selected.id === g.id ? ' sel' : '');
+        d.innerHTML = `
+          <div class="obs-cover">
+            <div style="width:36px;height:5px;border-radius:2px;background:${g.col}"></div>
+            <div class="obs-code">${g.code}</div>
+            <div style="font-size:11px;color:var(--muted);font-weight:700;">${g.time}</div>
+          </div>
+          <div class="obs-name">${g.title}</div>`;
+        d.onclick = () => selectGame(g);
+        og.appendChild(d);
+      });
+
+      // 2. Monolith grid
+      const mg = document.getElementById('monoGrid');
+      mg.innerHTML = '';
+      list.forEach(g => {
+        const d = document.createElement('div');
+        d.className = 'mono-card' + (selected.id === g.id ? ' sel' : '');
+        d.innerHTML = `
+          <div class="mono-art">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);font-weight:800;">${g.con.toUpperCase()}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:900;">${g.code}</div>
+            <div style="font-size:11px;color:var(--muted);font-weight:700;">${g.time}</div>
+          </div>
+          <div style="font-size:14px;font-weight:800;">${g.title}</div>`;
+        d.onclick = () => selectGame(g);
+        mg.appendChild(d);
+      });
+
+      // 3. Midnight grid
+      const mdg = document.getElementById('midGrid');
+      mdg.innerHTML = '';
+      list.forEach(g => {
+        const d = document.createElement('div');
+        d.className = 'mid-card' + (selected.id === g.id ? ' sel' : '');
+        d.innerHTML = `
+          <div class="mid-cover">
+            <div style="width:42px;height:6px;border-radius:3px;background:${g.col}"></div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:34px;font-weight:900;">${g.code}</div>
+            <div style="font-size:12px;color:var(--muted);font-weight:700;">${g.time}</div>
+          </div>
+          <div style="font-size:16px;font-weight:800;color:${selected.id === g.id ? 'var(--accent)' : 'var(--text)'}">${g.title}</div>`;
+        d.onclick = () => selectGame(g);
+        mdg.appendChild(d);
+      });
+    }
+
+    function setConsole(con) {
+      activeCon = con;
+      document.querySelectorAll('[data-con]').forEach(el => {
+        el.classList.toggle('active', el.dataset.con === con);
+      });
+      const first = GAMES.find(g => g.con === con);
+      if (first) selectGame(first);
+    }
+
+    document.querySelectorAll('[data-con]').forEach(el => {
+      el.addEventListener('click', () => setConsole(el.dataset.con));
+    });
+
+    document.querySelectorAll('.concept-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.concept-pill').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.concept-screen').forEach(s => s.classList.remove('active'));
+        btn.classList.add('active');
+        const c = btn.dataset.c;
+        document.getElementById('screen-' + c).classList.add('active');
+        document.getElementById('conceptDesc').textContent = CONCEPT_DESC[c];
+      });
+    });
+
+    renderAllGrids();
+  </script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <functional>
 #include <memory>
@@ -57,10 +58,38 @@ struct DiagnosticResult {
     std::string details;
 };
 
+enum class CompileOptLevel {
+    None,        // -O0: no optimization
+    Fast,        // -O1: 3-5x faster compilation, low RAM usage (default)
+    Balanced,    // -O2: heavier optimization passes
+    Aggressive,  // -O3: aggressive vectorization & inlining
+};
+
+enum class LogLevel {
+    Info,
+    Message,
+    Success,
+    Warning,
+};
+
+struct CompileLogEntry {
+    std::string time;
+    LogLevel level = LogLevel::Message;
+    std::string message;
+};
+
 class Pipeline {
 public:
+    static constexpr unsigned int kDefaultCompileThreads = 2U;
+
     Pipeline();
     ~Pipeline();
+
+    // Compilation resource & speed controls (exposed for upcoming Settings UI)
+    void set_max_compile_threads(unsigned int threads);
+    unsigned int max_compile_threads() const;
+    void set_compile_opt_level(CompileOptLevel level);
+    CompileOptLevel compile_opt_level() const;
 
     // Start recompilation asynchronously
     bool start_pipeline(const RomInfo& rom);
@@ -73,6 +102,7 @@ public:
     float progress() const;
     std::string current_step_description() const;
     std::string error_message() const;
+    std::vector<CompileLogEntry> compile_log() const;
 
     // Output artifacts
     std::filesystem::path output_binary() const;
@@ -82,7 +112,8 @@ public:
     const RecompStats& stats() const;
 
     // Launch game and monitor fallbacks
-    bool launch_game(bool fullscreen = false, bool crt_filter = false);
+    bool launch_game(bool fullscreen = false, bool crt_filter = false,
+                     bool auto_save_state = false);
     void stop_game();
     bool is_game_running() const;
     std::string last_game_error() const;
@@ -104,6 +135,7 @@ public:
 private:
     void run_worker(RomInfo rom);
     void monitor_game_process(int pid, int stderr_fd, RomPlatform platform);
+    void append_log(LogLevel level, const std::string& msg);
 
     mutable std::mutex mutex_;
     std::atomic<PipelineStage> stage_{PipelineStage::Idle};
@@ -111,6 +143,8 @@ private:
     std::string step_desc_;
     std::string error_msg_;
     std::string last_game_error_;
+    std::chrono::steady_clock::time_point pipeline_start_time_{};
+    std::vector<CompileLogEntry> compile_log_;
 
     std::filesystem::path workspace_dir_;
     std::filesystem::path output_binary_;
@@ -125,7 +159,10 @@ private:
     std::atomic<int> running_game_pid_{-1};
     bool last_fullscreen_ = false;
     bool last_crt_ = false;
+    bool last_autosave_ = false;
     std::atomic<bool> relaunch_after_compile_{false};
+    std::atomic<unsigned int> max_compile_threads_{kDefaultCompileThreads};
+    std::atomic<CompileOptLevel> compile_opt_level_{CompileOptLevel::Fast};
 
     std::vector<FallbackEvent> captured_fallbacks_;
     std::vector<FallbackEvent> unapplied_fallbacks_;

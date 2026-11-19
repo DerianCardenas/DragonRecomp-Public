@@ -1,0 +1,68 @@
+import { Theme } from "../theme.slint";
+
+export component GameCard inherits Rectangle {
+    in property <string> title;
+    in property <string> code;
+    in property <string> meta;
+    in property <color> console-color: Theme.nes;
+    in property <bool> selected: false;
+    callback clicked();
+
+    width: 190px;
+    height: 300px;
+    background: transparent;
+
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+
+    VerticalLayout {
+        spacing: 10px;
+
+        Rectangle {
+            height: 252px;
+            border-radius: 10px;
+            background: ta.has-hover ? Theme.bg-card-hover : Theme.bg-card;
+            border-width: (ta.has-hover || root.selected) ? 2px : 1px;
+            border-color: (ta.has-hover || root.selected) ? Theme.accent : Theme.border;
+            animate background { duration: 120ms; }
+            animate border-color { duration: 120ms; }
+
+            VerticalLayout {
+                padding: 16px;
+                alignment: space-between;
+
+                Rectangle {
+                    width: 44px;
+                    height: 6px;
+                    border-radius: 2px;
+                    background: root.console-color;
+                }
+
+                Text {
+                    text: root.code;
+                    color: Theme.text-primary;
+                    font-size: 32px;
+                    font-weight: 800;
+                }
+
+                Text {
+                    text: root.meta;
+                    color: Theme.text-secondary;
+                    font-size: 11px;
+                    font-weight: 700;
+                    letter-spacing: 0.8px;
+                }
+            }
+        }
+
+        Text {
+            text: root.title;
+            color: (ta.has-hover || root.selected) ? Theme.accent : Theme.text-primary;
+            font-size: 15px;
+            font-weight: 700;
+            overflow: elide;
+        }
+    }
+}
