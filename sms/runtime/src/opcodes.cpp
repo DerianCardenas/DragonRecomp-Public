@@ -1,6 +1,7 @@
 #include "sms/opcodes.h"
 
 #include <array>
+#include <cstddef>
 
 namespace dragon::sms {
 
