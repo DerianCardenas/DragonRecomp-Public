@@ -50,6 +50,8 @@ ImVec4 platform_color(const std::string& key) {
         return ImVec4(0.14f, 0.45f, 0.85f, 1.f);
     if (key == "gg")
         return ImVec4(0.16f, 0.56f, 0.76f, 1.f);
+    if (key == "pce")
+        return ImVec4(0.85f, 0.36f, 0.14f, 1.f);
     return ImVec4(0.35f, 0.38f, 0.45f, 1.f);
 }
 
@@ -68,6 +70,8 @@ const char* platform_short(const std::string& key) {
         return "SMS";
     if (key == "gg")
         return "GG";
+    if (key == "pce")
+        return "PCE";
     return "?";
 }
 
@@ -86,6 +90,8 @@ const char* platform_full_name(const std::string& key) {
         return "Sega Master System";
     if (key == "gg")
         return "Sega Game Gear";
+    if (key == "pce")
+        return "PC Engine / TG-16";
     return "Desconocida";
 }
 
@@ -451,6 +457,7 @@ void StudioApp::render_library() {
         {"Game Boy / Color", "gb", {"gb", "gbc"}},
         {"Game Boy Advance", "gba", {"gba"}},
         {"Sega MS / GG", "sms", {"sms", "gg"}},
+        {"PC Engine", "pce", {"pce"}},
     };
     constexpr size_t kConsoleTabCount = sizeof(console_tabs) / sizeof(console_tabs[0]);
     library_console_tab_ = std::clamp(library_console_tab_, 0, static_cast<int>(kConsoleTabCount) - 1);

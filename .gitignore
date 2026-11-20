@@ -8,6 +8,8 @@ build/
 *.gba
 *.sms
 *.gg
+*.pce
+*.sgx
 .cache/
 
 # Build directories
@@ -23,6 +25,7 @@ snes/games/*/generated/
 gb/games/*/generated/
 gba/games/*/generated/
 sms/games/*/generated/
+pce/games/*/generated/
 fallback.log
 ExportedGames/
 .dragon/

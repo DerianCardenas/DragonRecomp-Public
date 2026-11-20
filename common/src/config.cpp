@@ -152,10 +152,10 @@ GameConfig parse_game_config_str(std::string_view toml_text,
     cfg.platform = require_string(*game_tbl, "platform", "[game]");
     if (cfg.platform != "nes" && cfg.platform != "snes" && cfg.platform != "gb" &&
         cfg.platform != "gbc" && cfg.platform != "gba" && cfg.platform != "sms" &&
-        cfg.platform != "gg") {
+        cfg.platform != "gg" && cfg.platform != "pce") {
         throw std::runtime_error("Unsupported platform '" + cfg.platform +
-                                 "' in [game] (expected 'nes', 'snes', 'gb', 'gbc', 'gba', 'sms' "
-                                 "or 'gg')");
+                                 "' in [game] (expected 'nes', 'snes', 'gb', 'gbc', 'gba', 'sms', "
+                                 "'gg' or 'pce')");
     }
 
     std::filesystem::path rel_rom = require_string(*game_tbl, "rom", "[game]");

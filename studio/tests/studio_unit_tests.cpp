@@ -875,6 +875,100 @@ void test_pipeline_compile_sms() {
     std::filesystem::remove_all(temp_dir);
 }
 
+void test_detect_rom_pce() {
+    std::cout << "[Test] detect_rom PC Engine / TG-16...\n";
+    const auto temp_dir = std::filesystem::temp_directory_path() / "dragon_test_detect_pce";
+    std::filesystem::remove_all(temp_dir);
+    std::filesystem::create_directories(temp_dir);
+
+    const auto pce_path = temp_dir / "Bonks_Adventure_Test.pce";
+    std::vector<uint8_t> pce_rom(512 + 32768, 0xEAU);  // With 512-byte copier header
+    pce_rom[512 + 0x1FFE] = 0x00U;
+    pce_rom[512 + 0x1FFF] = 0xE0U;
+    {
+        std::ofstream f(pce_path, std::ios::binary);
+        f.write(reinterpret_cast<const char*>(pce_rom.data()),
+                static_cast<std::streamsize>(pce_rom.size()));
+    }
+    const RomInfo info = detect_rom(pce_path);
+    assert(info.is_valid());
+    assert(info.platform == RomPlatform::PCEngine);
+    assert(info.smc_header);
+    assert(info.rom_size_kb == 32U);
+    assert(info.sha1.size() == 40U);
+
+    std::filesystem::remove_all(temp_dir);
+    std::cout << "  PC Engine ROM detection passed!\n";
+}
+
+void test_pipeline_compile_pce() {
+    std::cout << "[Test] pipeline compile_c_to_binary PCE...\n";
+    const auto temp_dir = std::filesystem::temp_directory_path() / "dragon_test_pipeline_compile_pce";
+    std::filesystem::remove_all(temp_dir);
+    std::filesystem::create_directories(temp_dir);
+
+    RomInfo pce_info;
+    pce_info.platform = RomPlatform::PCEngine;
+    pce_info.clean_name = "Bonk PCE Test";
+    pce_info.file_path = "roms/pce/bonk.pce";
+    pce_info.sha1 = "abcdef1234567890abcdef1234567890abcdef12";
+    pce_info.rom_size_kb = 256;
+
+    const auto gen_dir = temp_dir / "generated";
+    std::filesystem::create_directories(gen_dir);
+
+    {
+        std::ofstream h(gen_dir / "recomp_functions.h");
+        h << "#pragma once\n"
+          << "#include <stddef.h>\n"
+          << "#include \"pce/cpu_state.h\"\n"
+          << "#ifdef __cplusplus\nextern \"C\" {\n#endif\n"
+          << "void func_00_E000(PceCpuState* cpu);\n"
+          << "extern const PceRecompFuncEntry kRecompDispatchTable[];\n"
+          << "extern const size_t kRecompDispatchTableCount;\n"
+          << "#ifdef __cplusplus\n}\n#endif\n";
+    }
+    {
+        std::ofstream c(gen_dir / "recomp_all.c");
+        c << "#include \"recomp_functions.h\"\n"
+          << "void func_00_E000(PceCpuState* cpu) { cpu->a = 0x42U; pce_add_cycles(cpu, 2U); }\n"
+          << "const PceRecompFuncEntry kRecompDispatchTable[] = {\n"
+          << "    { 0xE000U, 0x00U, func_00_E000 }\n"
+          << "};\n"
+          << "const size_t kRecompDispatchTableCount = 1U;\n";
+    }
+
+    Pipeline pipeline;
+    const auto toml_path = temp_dir / "game_pce.toml";
+    assert(pipeline.generate_initial_toml(pce_info, toml_path));
+    assert(std::filesystem::exists(toml_path));
+
+    const auto out_bin = temp_dir / "game_pce_bin";
+    const bool compiled = pipeline.compile_c_to_binary(pce_info, gen_dir, out_bin);
+    if (!compiled) {
+        std::cerr << "PCE Compilation failed: " << pipeline.error_message() << "\n";
+    }
+    assert(compiled);
+    assert(std::filesystem::exists(out_bin));
+
+    PackageOptions opts;
+    opts.source_binary = out_bin;
+    opts.generated_dir = gen_dir;
+    opts.rom_info = pce_info;
+    opts.output_directory = temp_dir / "exported";
+    opts.include_launcher_script = true;
+    opts.include_desktop_entry = true;
+    opts.bundle_standalone_cmake = true;
+
+    const PackageResult res = Packager::create_portable_package(opts);
+    assert(res.success);
+    assert(std::filesystem::exists(res.package_path / "CMakeLists.txt"));
+    assert(std::filesystem::exists(res.package_path / "include" / "pce" / "bus.h"));
+    std::cout << "  PCE native compilation & portable package passed!\n";
+
+    std::filesystem::remove_all(temp_dir);
+}
+
 }  // namespace
 
 int main() {
@@ -883,6 +977,7 @@ int main() {
     test_detect_rom_gb_and_gbc();
     test_detect_rom_gba();
     test_detect_rom_sms_and_gg();
+    test_detect_rom_pce();
     test_detect_rom_invalid();
     test_packager();
     test_packager_windows();
@@ -894,6 +989,7 @@ int main() {
     test_pipeline_compile_gb();
     test_pipeline_compile_gba();
     test_pipeline_compile_sms();
+    test_pipeline_compile_pce();
     test_diagnose_and_repair();
     std::cout << "All studio unit tests passed!\n";
     return 0;

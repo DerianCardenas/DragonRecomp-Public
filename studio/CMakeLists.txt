@@ -49,6 +49,7 @@ target_link_libraries(studio_lib PUBLIC
   gb_runtime
   gba_runtime
   sms_runtime
+  pce_runtime
   SDL3::SDL3
   dragon_warnings)
 

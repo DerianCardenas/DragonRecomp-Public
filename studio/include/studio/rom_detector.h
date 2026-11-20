@@ -16,6 +16,7 @@ enum class RomPlatform {
     GameBoyAdvance,
     MasterSystem,
     GameGear,
+    PCEngine,
 };
 
 struct RomInfo {
@@ -66,6 +67,8 @@ struct RomInfo {
                 return "Sega Master System (Z80)";
             case RomPlatform::GameGear:
                 return "Sega Game Gear (Z80)";
+            case RomPlatform::PCEngine:
+                return "PC Engine / TG-16 (HuC6280)";
             default:
                 return "Desconocida";
         }

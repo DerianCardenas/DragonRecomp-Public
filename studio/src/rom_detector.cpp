@@ -107,6 +107,24 @@ RomInfo detect_rom(const std::filesystem::path& path) {
         }
     }
 
+    // 1.6. Check PC Engine / TurboGrafx-16 (.pce / .sgx HuCard)
+    {
+        const std::string ext_chk = path.extension().string();
+        if (ext_chk == ".pce" || ext_chk == ".PCE" || ext_chk == ".sgx" || ext_chk == ".SGX") {
+            const size_t pce_off =
+                (data.size() >= 8192U + 512U && (data.size() % 8192U) == 512U) ? 512U : 0U;
+            const uint8_t* pce_rom = data.data() + pce_off;
+            const size_t pce_sz = data.size() - pce_off;
+            info.platform = RomPlatform::PCEngine;
+            info.rom_size_kb = pce_sz / 1024U;
+            info.smc_header = (pce_off != 0U);
+            info.sha1 = dragon::sha1_hex(std::span<const uint8_t>(pce_rom, pce_sz));
+            info.clean_name = clean_title_from_path(path);
+            info.internal_title = info.clean_name;
+            return info;
+        }
+    }
+
     // 2. Check SNES header
     // Check if 512-byte SMC header is present
     size_t smc_offset = 0;

@@ -1,0 +1,27 @@
+# DragonRecomp Knowledge Base — PC Engine / TurboGrafx-16 (HuC6280)
+
+[platform]
+name = "PC Engine / TurboGrafx-16"
+id = "pce"
+cpu = "HuC6280"
+clock_hz = 7159090
+frame_cycles = 119210
+scanlines = 262
+screen_width = 256
+screen_height = 240
+aspect_ratio = "4:3"
+
+[memory]
+zero_page_base = 0x2000
+stack_base = 0x2100
+io_bank = 0xFF
+wram_bank = 0xF8
+bram_bank = 0xF7
+boot_bank = 0x00
+
+[vectors]
+irq2 = 0xFFF6
+irq1 = 0xFFF8
+tiq = 0xFFFA
+nmi = 0xFFFC
+reset = 0xFFFE

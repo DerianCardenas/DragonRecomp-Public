@@ -31,6 +31,7 @@ REQUIRED_TARGETS=(
     "gb/recompiler/gbrecomp"
     "gba/recompiler/gbarecomp"
     "sms/recompiler/smsrecomp"
+    "pce/recompiler/pcerecomp"
 )
 
 NEED_BUILD=0
@@ -43,7 +44,7 @@ done
 
 if [ "${NEED_BUILD}" -eq 1 ]; then
     echo "Compilando dependencias requeridas..."
-    cmake --build "${BUILD_DIR}" --target dragon-studio nesrecomp snesrecomp gbrecomp gbarecomp smsrecomp
+    cmake --build "${BUILD_DIR}" --target dragon-studio nesrecomp snesrecomp gbrecomp gbarecomp smsrecomp pcerecomp
 fi
 
 # 2. Preparar directorio limpio de empaquetado
@@ -58,13 +59,15 @@ cp "${BUILD_DIR}/snes/recompiler/snesrecomp" "${PACKAGE_DIR}/snesrecomp"
 cp "${BUILD_DIR}/gb/recompiler/gbrecomp" "${PACKAGE_DIR}/gbrecomp"
 cp "${BUILD_DIR}/gba/recompiler/gbarecomp" "${PACKAGE_DIR}/gbarecomp"
 cp "${BUILD_DIR}/sms/recompiler/smsrecomp" "${PACKAGE_DIR}/smsrecomp"
+cp "${BUILD_DIR}/pce/recompiler/pcerecomp" "${PACKAGE_DIR}/pcerecomp"
 
 chmod +x "${PACKAGE_DIR}/dragon-studio" \
          "${PACKAGE_DIR}/nesrecomp" \
          "${PACKAGE_DIR}/snesrecomp" \
          "${PACKAGE_DIR}/gbrecomp" \
          "${PACKAGE_DIR}/gbarecomp" \
-         "${PACKAGE_DIR}/smsrecomp"
+         "${PACKAGE_DIR}/smsrecomp" \
+         "${PACKAGE_DIR}/pcerecomp"
 
 if command -v strip >/dev/null 2>&1; then
     echo "Reduciendo simbolos debug con strip..."
@@ -73,7 +76,8 @@ if command -v strip >/dev/null 2>&1; then
                            "${PACKAGE_DIR}/snesrecomp" \
                            "${PACKAGE_DIR}/gbrecomp" \
                            "${PACKAGE_DIR}/gbarecomp" \
-                           "${PACKAGE_DIR}/smsrecomp" 2>/dev/null || true
+                           "${PACKAGE_DIR}/smsrecomp" \
+                           "${PACKAGE_DIR}/pcerecomp" 2>/dev/null || true
 fi
 
 # 4. Incluir libSDL3.so.0 portable
@@ -155,10 +159,11 @@ Consolas soportadas:
   - Game Boy & Game Boy Color (Sharp SM83)
   - Game Boy Advance (ARM7TDMI ARMv4T + Thumb)
   - Sega Master System & Game Gear (Zilog Z80 / VDP Mode 4 / SN76489 PSG)
+  - PC Engine & TurboGrafx-16 (HuC6280 / HuC6270 VDC / HuC6260 VCE / PSG)
 
 COMO EJECUTAR EN LINUX:
   1. Haz doble clic en 'run-studio.sh' (o ejecuta './run-studio.sh' en la terminal).
-  2. Arrastra y suelta tu ROM (.nes, .sfc, .smc, .gb, .gbc, .gba, .sms, .gg) en la ventana.
+  2. Arrastra y suelta tu ROM (.nes, .sfc, .smc, .gb, .gbc, .gba, .sms, .gg, .pce) en la ventana.
   3. Haz clic en "Recompilar y Ejecutar" para jugar a 60 FPS fluidos con
      sincronizacion de audio, guardados SRAM (.sav) y save states (F5 / F7).
 

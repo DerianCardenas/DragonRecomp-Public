@@ -91,6 +91,7 @@ std::string CoverManager::get_system_name(const std::string& platform_key) {
     if (platform_key == "gba") return "Nintendo - Game Boy Advance";
     if (platform_key == "sms") return "Sega - Master System - Mark III";
     if (platform_key == "gg") return "Sega - Game Gear";
+    if (platform_key == "pce") return "NEC - PC Engine - TurboGrafx 16";
     return "";
 }
 

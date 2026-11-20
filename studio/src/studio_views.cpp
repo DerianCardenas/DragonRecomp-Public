@@ -132,6 +132,8 @@ const char* rom_platform_badge(RomPlatform p) {
             return "SMS";
         case RomPlatform::GameGear:
             return "GG";
+        case RomPlatform::PCEngine:
+            return "PCE";
         default:
             return "ROM";
     }
@@ -153,6 +155,8 @@ const char* rom_platform_display_name(RomPlatform p) {
             return "Sega Master System";
         case RomPlatform::GameGear:
             return "Sega Game Gear";
+        case RomPlatform::PCEngine:
+            return "PC Engine / TurboGrafx-16";
         default:
             return "Consola";
     }
@@ -165,6 +169,13 @@ struct ControlRow {
 
 std::vector<ControlRow> console_controls_for(RomPlatform p) {
     switch (p) {
+        case RomPlatform::PCEngine:
+            return {
+                {"Cruceta", "Flechas / WASD"},
+                {"Boton I", "Z / J"},
+                {"Boton II", "X / K"},
+                {"Run / Select", "Enter / Shift o Tab"},
+            };
         case RomPlatform::MasterSystem:
             return {
                 {"Cruceta", "Flechas / WASD"},
@@ -447,9 +458,9 @@ void StudioApp::render_recompiler() {
 
     ImGui::Dummy(ImVec2(0.f, 6.f));
 
-    // Format chips (.nes, .sfc, .smc, .gb, .gbc, .gba, .sms, .gg)
-    const char* chips[] = {".nes", ".sfc", ".smc", ".gb", ".gbc", ".gba", ".sms", ".gg"};
-    constexpr int kChipCount = 8;
+    // Format chips (.nes, .sfc, .smc, .gb, .gbc, .gba, .sms, .gg, .pce)
+    const char* chips[] = {".nes", ".sfc", ".smc", ".gb", ".gbc", ".gba", ".sms", ".gg", ".pce"};
+    constexpr int kChipCount = 9;
     if (fonts_.small)
         ImGui::PushFont(fonts_.small);
     float total_chips_w = 0.0f;
