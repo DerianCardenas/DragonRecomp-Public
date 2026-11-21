@@ -134,6 +134,8 @@ const char* rom_platform_badge(RomPlatform p) {
             return "GG";
         case RomPlatform::PCEngine:
             return "PCE";
+        case RomPlatform::Genesis:
+            return "MD";
         default:
             return "ROM";
     }
@@ -157,6 +159,8 @@ const char* rom_platform_display_name(RomPlatform p) {
             return "Sega Game Gear";
         case RomPlatform::PCEngine:
             return "PC Engine / TurboGrafx-16";
+        case RomPlatform::Genesis:
+            return "Sega Genesis / Mega Drive";
         default:
             return "Consola";
     }
@@ -169,6 +173,13 @@ struct ControlRow {
 
 std::vector<ControlRow> console_controls_for(RomPlatform p) {
     switch (p) {
+        case RomPlatform::Genesis:
+            return {
+                {"Cruceta", "Flechas / WASD"},
+                {"Botones A / B / C", "Z / X / C  (o J / K / L)"},
+                {"Botones X / Y / Z", "Q / E / R  (o U / I / O)"},
+                {"Start / Mode", "Enter / Shift o Retroceso"},
+            };
         case RomPlatform::PCEngine:
             return {
                 {"Cruceta", "Flechas / WASD"},
@@ -302,7 +313,9 @@ void StudioApp::render_sidebar() {
                    info_hov ? ImGui::GetColorU32(ThemeColors::TextPrimary)
                             : ImGui::GetColorU32(ThemeColors::TextMuted));
     if (info_hov) {
-        ImGui::SetTooltip("DragonRecomp Studio v1.0.0\nNES · SNES · GB/GBC · GBA");
+        ImGui::SetTooltip(
+            "DragonRecomp Studio v1.0.0\n"
+            "NES · SNES · GB/GBC · GBA · SMS/GG · PCE · Genesis/MD");
     }
 
     ImGui::EndChild();
@@ -375,8 +388,7 @@ void StudioApp::render_topbar() {
     ImFont* pill_font = fonts_.small ? fonts_.small : ImGui::GetFont();
     const float pill_font_sz = pill_font->LegacySize;
     const ImVec2 pt_sz = pill_font->CalcTextSizeA(pill_font_sz, FLT_MAX, 0.0f, pill_text);
-    dl->AddText(pill_font, pill_font_sz,
-                ImVec2(pill_x + 22.0f, pill_y + (pill_h - pt_sz.y) * 0.5f),
+    dl->AddText(pill_font, pill_font_sz, ImVec2(pill_x + 22.0f, pill_y + (pill_h - pt_sz.y) * 0.5f),
                 ImGui::GetColorU32(ThemeColors::TextMuted), pill_text);
 
     // Primary CTA Button
@@ -458,9 +470,10 @@ void StudioApp::render_recompiler() {
 
     ImGui::Dummy(ImVec2(0.f, 6.f));
 
-    // Format chips (.nes, .sfc, .smc, .gb, .gbc, .gba, .sms, .gg, .pce)
-    const char* chips[] = {".nes", ".sfc", ".smc", ".gb", ".gbc", ".gba", ".sms", ".gg", ".pce"};
-    constexpr int kChipCount = 9;
+    // Format chips (.nes, .sfc, .smc, .gb, .gbc, .gba, .sms, .gg, .pce, .md, .gen)
+    const char* chips[] = {".nes", ".sfc", ".smc", ".gb", ".gbc", ".gba",
+                           ".sms", ".gg",  ".pce", ".md", ".gen"};
+    constexpr int kChipCount = 11;
     if (fonts_.small)
         ImGui::PushFont(fonts_.small);
     float total_chips_w = 0.0f;
@@ -819,9 +832,9 @@ void StudioApp::render_recompiler() {
                     ImGui::PushFont(fonts_.small);
                 ImGui::TextColored(ThemeColors::AccentCyan, "%s", header);
                 ImGui::Dummy(ImVec2(0.f, 4.f));
-                if (ImGui::BeginTable(id, 2,
-                                      ImGuiTableFlags_SizingStretchProp |
-                                          ImGuiTableFlags_NoSavedSettings)) {
+                if (ImGui::BeginTable(
+                        id, 2,
+                        ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings)) {
                     ImGui::TableSetupColumn("Accion", ImGuiTableColumnFlags_WidthStretch, 0.48f);
                     ImGui::TableSetupColumn("Teclas", ImGuiTableColumnFlags_WidthStretch, 0.52f);
                     for (size_t i = 0; i < count; ++i) {
@@ -839,9 +852,9 @@ void StudioApp::render_recompiler() {
 
             const float ctrl_w = ImGui::GetContentRegionAvail().x;
             if (ctrl_w >= 460.0f) {
-                if (ImGui::BeginTable("ControlsTwoCol", 2,
-                                      ImGuiTableFlags_SizingStretchSame |
-                                          ImGuiTableFlags_NoSavedSettings)) {
+                if (ImGui::BeginTable(
+                        "ControlsTwoCol", 2,
+                        ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoSavedSettings)) {
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     draw_binding_table("PadTbl", "MANDO", pad_rows.data(), pad_rows.size());
@@ -1054,8 +1067,9 @@ void StudioApp::render_preferences() {
         int threads = static_cast<int>(draft_settings_.max_compile_threads);
         const float count_txt_w = ImGui::CalcTextSize("16 nucleos").x;
         const float slider_w = std::clamp(container_w * 0.28f, 130.0f, 220.0f);
-        const float row1_ctrl_x = std::max(ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x + 12.0f,
-                                           inner_right - slider_w - 10.0f - count_txt_w);
+        const float row1_ctrl_x =
+            std::max(ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x + 12.0f,
+                     inner_right - slider_w - 10.0f - count_txt_w);
         ImGui::SameLine(row1_ctrl_x);
         ImGui::SetNextItemWidth(slider_w);
         if (ImGui::SliderInt("##PrefThreads", &threads, 1, 16, "")) {
@@ -1077,8 +1091,8 @@ void StudioApp::render_preferences() {
         const float combo_w =
             std::max(std::clamp(container_w * 0.34f, 195.0f, 250.0f),
                      ImGui::CalcTextSize("-O2 (Balanceado)").x + ImGui::GetFrameHeight() + 24.0f);
-        const float row2_ctrl_x = std::max(ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x + 12.0f,
-                                           inner_right - combo_w);
+        const float row2_ctrl_x = std::max(
+            ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x + 12.0f, inner_right - combo_w);
         ImGui::SameLine(row2_ctrl_x);
         ImGui::SetNextItemWidth(combo_w);
         if (ImGui::Combo("##PrefOpt", &opt_idx, opt_items, IM_ARRAYSIZE(opt_items))) {

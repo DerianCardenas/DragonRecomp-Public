@@ -777,7 +777,8 @@ void test_detect_rom_sms_and_gg() {
         sms[0x7FFF] = 0x4CU;  // Region 4 = SMS Export
         const auto sms_path = temp_dir / "Sonic_Test.sms";
         std::ofstream out(sms_path, std::ios::binary);
-        out.write(reinterpret_cast<const char*>(sms.data()), static_cast<std::streamsize>(sms.size()));
+        out.write(reinterpret_cast<const char*>(sms.data()),
+                  static_cast<std::streamsize>(sms.size()));
         out.close();
 
         const RomInfo info = detect_rom(sms_path);
@@ -794,7 +795,8 @@ void test_detect_rom_sms_and_gg() {
         gg[0x7FFF] = 0x6CU;  // Region 6 = GG Export
         const auto gg_path = temp_dir / "Shinobi_Test.gg";
         std::ofstream out(gg_path, std::ios::binary);
-        out.write(reinterpret_cast<const char*>(gg.data()), static_cast<std::streamsize>(gg.size()));
+        out.write(reinterpret_cast<const char*>(gg.data()),
+                  static_cast<std::streamsize>(gg.size()));
         out.close();
 
         const RomInfo info = detect_rom(gg_path);
@@ -809,7 +811,8 @@ void test_detect_rom_sms_and_gg() {
 
 void test_pipeline_compile_sms() {
     std::cout << "[Test] pipeline compile_c_to_binary SMS/GG...\n";
-    const auto temp_dir = std::filesystem::temp_directory_path() / "dragon_test_pipeline_compile_sms";
+    const auto temp_dir =
+        std::filesystem::temp_directory_path() / "dragon_test_pipeline_compile_sms";
     std::filesystem::remove_all(temp_dir);
     std::filesystem::create_directories(temp_dir);
 
@@ -903,7 +906,8 @@ void test_detect_rom_pce() {
 
 void test_pipeline_compile_pce() {
     std::cout << "[Test] pipeline compile_c_to_binary PCE...\n";
-    const auto temp_dir = std::filesystem::temp_directory_path() / "dragon_test_pipeline_compile_pce";
+    const auto temp_dir =
+        std::filesystem::temp_directory_path() / "dragon_test_pipeline_compile_pce";
     std::filesystem::remove_all(temp_dir);
     std::filesystem::create_directories(temp_dir);
 
@@ -969,6 +973,82 @@ void test_pipeline_compile_pce() {
     std::filesystem::remove_all(temp_dir);
 }
 
+void test_detect_rom_genesis() {
+    std::cout << "[Test] detect_rom Sega Genesis / Mega Drive...\n";
+    const auto temp_dir = std::filesystem::temp_directory_path() / "dragon_test_detect_md";
+    std::filesystem::remove_all(temp_dir);
+    std::filesystem::create_directories(temp_dir);
+
+    const auto md_path = temp_dir / "Sonic_Test.md";
+    std::vector<uint8_t> rom(65536, 0);
+    std::memcpy(&rom[0x100], "SEGA GENESIS    ", 16);
+    std::memcpy(&rom[0x150], "SONIC TEST", 10);
+    {
+        std::ofstream f(md_path, std::ios::binary);
+        f.write(reinterpret_cast<const char*>(rom.data()),
+                static_cast<std::streamsize>(rom.size()));
+    }
+    const RomInfo info = detect_rom(md_path);
+    assert(info.is_valid());
+    assert(info.platform == RomPlatform::Genesis);
+    assert(info.rom_size_kb == 64U);
+    assert(info.internal_title == "SONIC TEST");
+    assert(info.sha1.size() == 40U);
+
+    std::filesystem::remove_all(temp_dir);
+    std::cout << "  Genesis ROM detection passed!\n";
+}
+
+void test_pipeline_compile_genesis() {
+    std::cout << "[Test] pipeline compile_c_to_binary Genesis...\n";
+    const auto temp_dir =
+        std::filesystem::temp_directory_path() / "dragon_test_pipeline_compile_md";
+    std::filesystem::remove_all(temp_dir);
+    std::filesystem::create_directories(temp_dir);
+
+    RomInfo md_info;
+    md_info.platform = RomPlatform::Genesis;
+    md_info.clean_name = "Sonic MD Test";
+    md_info.file_path = "roms/md/sonic.md";
+    md_info.sha1 = "1234567890abcdef1234567890abcdef12345678";
+    md_info.rom_size_kb = 512;
+
+    const auto gen_dir = temp_dir / "generated";
+    std::filesystem::create_directories(gen_dir);
+
+    {
+        std::ofstream h(gen_dir / "recomp_decls.h");
+        h << "#pragma once\n#include \"md/cpu_state.h\"\n"
+          << "void func_000200(MdCpuState* cpu);\n";
+    }
+    {
+        std::ofstream c(gen_dir / "recomp_dispatch.c");
+        c << "#include \"recomp_decls.h\"\n"
+          << "const char* md_recomp_default_rom_path = \"\";\n"
+          << "const char* md_recomp_expected_sha1 = \"\";\n"
+          << "void func_000200(MdCpuState* cpu) { cpu->d[0] = 42U; cpu->stopped = 2U; }\n"
+          << "const MdRecompFuncEntry md_recomp_functions[] = { { 0x000200U, func_000200 }, { 0U, "
+             "NULL } };\n"
+          << "const size_t md_recomp_function_count = 1U;\n";
+    }
+
+    Pipeline pipeline;
+    const auto toml_path = temp_dir / "game_md.toml";
+    assert(pipeline.generate_initial_toml(md_info, toml_path));
+    assert(std::filesystem::exists(toml_path));
+
+    const auto out_bin = temp_dir / "game_md_bin";
+    const bool compiled = pipeline.compile_c_to_binary(md_info, gen_dir, out_bin);
+    if (!compiled) {
+        std::cerr << "Genesis Compilation failed: " << pipeline.error_message() << "\n";
+    }
+    assert(compiled);
+    assert(std::filesystem::exists(out_bin));
+
+    std::filesystem::remove_all(temp_dir);
+    std::cout << "  Genesis native compilation passed!\n";
+}
+
 }  // namespace
 
 int main() {
@@ -978,6 +1058,7 @@ int main() {
     test_detect_rom_gba();
     test_detect_rom_sms_and_gg();
     test_detect_rom_pce();
+    test_detect_rom_genesis();
     test_detect_rom_invalid();
     test_packager();
     test_packager_windows();
@@ -990,6 +1071,7 @@ int main() {
     test_pipeline_compile_gba();
     test_pipeline_compile_sms();
     test_pipeline_compile_pce();
+    test_pipeline_compile_genesis();
     test_diagnose_and_repair();
     std::cout << "All studio unit tests passed!\n";
     return 0;

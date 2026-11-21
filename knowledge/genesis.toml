@@ -1,0 +1,26 @@
+# Sega Genesis / Mega Drive Hardware Knowledge Base for DragonRecomp
+[platform]
+name = "Sega Genesis / Mega Drive"
+cpu = "Motorola 68000"
+sound_cpu = "Zilog Z80A"
+clock_hz = 7670454
+z80_clock_hz = 3579545
+scanlines_ntsc = 262
+cycles_per_scanline = 488
+vdp = "Sega 315-5313 VDP Mode 5 (320x224 / 256x224)"
+audio = "Yamaha YM2612 (OPN2) + SN76489 PSG"
+reference = "https://plutiedev.com/"
+
+[vectors]
+initial_ssp = 0x000000
+initial_pc = 0x000004
+line_a = 0x000028
+line_f = 0x00002C
+ext_int = 0x000068
+h_int = 0x000070
+v_int = 0x000078
+
+[mappers]
+standard = "Flat ROM up to 4 MiB ($000000-$3FFFFF)"
+sram = "Battery SRAM at $200000-$3FFFFF gated by $A130F1 bit 0"
+ssf2 = "8 x 512 KiB ROM banks via $A130F3-$A130FF (>4 MiB ROMs)"

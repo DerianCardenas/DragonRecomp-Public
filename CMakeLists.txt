@@ -11,6 +11,7 @@ option(DRAGON_BUILD_GB     "Build Game Boy recompiler and runtime" ON)
 option(DRAGON_BUILD_GBA    "Build Game Boy Advance recompiler and runtime" ON)
 option(DRAGON_BUILD_SMS    "Build Sega Master System / Game Gear recompiler and runtime" ON)
 option(DRAGON_BUILD_PCE    "Build PC Engine / TurboGrafx-16 recompiler and runtime" ON)
+option(DRAGON_BUILD_MD     "Build Sega Genesis / Mega Drive recompiler and runtime" ON)
 option(DRAGON_BUILD_STUDIO "Build DragonRecomp Studio GUI"     ON)
 option(DRAGON_BUILD_TESTS  "Build tests"                       ON)
 
@@ -61,6 +62,10 @@ endif()
 
 if(DRAGON_BUILD_PCE)
   add_subdirectory(pce)
+endif()
+
+if(DRAGON_BUILD_MD)
+  add_subdirectory(md)
 endif()
 
 if(DRAGON_BUILD_STUDIO)

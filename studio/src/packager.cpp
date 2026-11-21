@@ -469,6 +469,8 @@ bool Packager::bundle_runtime_sources(const std::filesystem::path& dest_dir,
         platform_str = "sms";
     } else if (options.rom_info.platform == RomPlatform::PCEngine) {
         platform_str = "pce";
+    } else if (options.rom_info.platform == RomPlatform::Genesis) {
+        platform_str = "md";
     }
 
     try {
@@ -527,12 +529,10 @@ bool Packager::bundle_runtime_sources(const std::filesystem::path& dest_dir,
                     const auto fname = entry.path().filename().string();
                     if (fname != "nes_runner_main.cpp" && fname != "snes_runner_main.cpp" &&
                         fname != "gb_runner_main.cpp" && fname != "gba_runner_main.cpp" &&
-                        fname != "sms_runner_main.cpp" &&
-                        fname != "pce_runner_main.cpp" &&
+                        fname != "sms_runner_main.cpp" && fname != "pce_runner_main.cpp" &&
                         fname != "nes_recomp_game_main.cpp" &&
                         fname != "snes_recomp_game_main.cpp" &&
-                        fname != "gb_recomp_game_main.cpp" &&
-                        fname != "gba_recomp_game_main.cpp" &&
+                        fname != "gb_recomp_game_main.cpp" && fname != "gba_recomp_game_main.cpp" &&
                         fname != "sms_recomp_game_main.cpp" &&
                         fname != "pce_recomp_game_main.cpp") {
                         std::filesystem::copy_file(
@@ -557,6 +557,8 @@ bool Packager::bundle_runtime_sources(const std::filesystem::path& dest_dir,
             main_name = "sms_recomp_game_main.cpp";
         } else if (options.rom_info.platform == RomPlatform::PCEngine) {
             main_name = "pce_recomp_game_main.cpp";
+        } else if (options.rom_info.platform == RomPlatform::Genesis) {
+            main_name = "md_recomp_game_main.cpp";
         }
         const auto main_cpp = repo / platform_str / "runtime" / "src" / main_name;
         if (std::filesystem::exists(main_cpp)) {

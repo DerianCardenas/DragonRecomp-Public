@@ -10,6 +10,8 @@ build/
 *.gg
 *.pce
 *.sgx
+*.gen
+*.smd
 .cache/
 
 # Build directories
@@ -26,6 +28,7 @@ gb/games/*/generated/
 gba/games/*/generated/
 sms/games/*/generated/
 pce/games/*/generated/
+md/games/*/generated/
 fallback.log
 ExportedGames/
 .dragon/

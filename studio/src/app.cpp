@@ -297,6 +297,8 @@ int StudioApp::console_tab_for_platform(const std::string& platform_key) const {
         return 4;
     if (platform_key == "pce")
         return 5;
+    if (platform_key == "genesis")
+        return 6;
     return 0;  // nes
 }
 
@@ -312,8 +314,8 @@ void StudioApp::queue_import_portable(const std::filesystem::path& folder_path) 
 
 void StudioApp::open_manual_import_rom_dialog() {
     static const SDL_DialogFileFilter kRomFilters[] = {
-        {"ROMs soportadas (*.nes, *.sfc, *.smc, *.gb, *.gbc, *.gba, *.sms, *.gg, *.pce)",
-         "nes;sfc;smc;gb;gbc;gba;sms;gg;pce;sgx"},
+        {"ROMs soportadas (*.nes, *.sfc, *.gb, *.gba, *.sms, *.gg, *.pce, *.md, *.gen, *.smd)",
+         "nes;sfc;smc;gb;gbc;gba;sms;gg;pce;sgx;md;bin;gen;smd"},
         {"Todos los archivos", "*"}};
     SDL_ShowOpenFileDialog(&on_manual_import_rom_picked, this, window_, kRomFilters, 2, nullptr,
                            false);
@@ -379,6 +381,9 @@ void StudioApp::import_portable_folder(const std::filesystem::path& folder_path)
         case RomPlatform::PCEngine:
             manual_import_platform_idx_ = 7;
             break;
+        case RomPlatform::Genesis:
+            manual_import_platform_idx_ = 8;
+            break;
         default:
             if (library_console_tab_ == 1)
                 manual_import_platform_idx_ = 1;
@@ -390,6 +395,8 @@ void StudioApp::import_portable_folder(const std::filesystem::path& folder_path)
                 manual_import_platform_idx_ = 5;
             else if (library_console_tab_ == 5)
                 manual_import_platform_idx_ = 7;
+            else if (library_console_tab_ == 6)
+                manual_import_platform_idx_ = 8;
             else
                 manual_import_platform_idx_ = 0;
             break;
@@ -553,8 +560,9 @@ void StudioApp::queue_load_rom(const std::filesystem::path& rom_path) {
 
 void StudioApp::open_rom_file_dialog() {
     static const SDL_DialogFileFilter kRomFilters[] = {
-        {"Todas las ROMs soportadas (*.nes, *.sfc, *.smc, *.gb, *.gbc, *.gba, *.sms, *.gg, *.pce)",
-         "nes;sfc;smc;gb;gbc;gba;sms;gg;pce;sgx"},
+        {"Todas las ROMs soportadas (*.nes, *.sfc, *.gb, *.gba, *.sms, *.gg, *.pce, *.md, *.gen)",
+         "nes;sfc;smc;gb;gbc;gba;sms;gg;pce;sgx;md;bin;gen;smd"},
+        {"Sega Genesis / Mega Drive (*.md, *.bin, *.gen, *.smd)", "md;bin;gen;smd"},
         {"PC Engine / TurboGrafx-16 (*.pce, *.sgx)", "pce;sgx"},
         {"Sega Master System / Game Gear (*.sms, *.gg)", "sms;gg"},
         {"ROMs de Game Boy Advance (*.gba)", "gba"},
@@ -562,7 +570,7 @@ void StudioApp::open_rom_file_dialog() {
         {"ROMs de NES (*.nes)", "nes"},
         {"ROMs de SNES (*.sfc, *.smc)", "sfc;smc"},
         {"Todos los archivos", "*"}};
-    SDL_ShowOpenFileDialog(&on_rom_file_picked, this, window_, kRomFilters, 8, nullptr, false);
+    SDL_ShowOpenFileDialog(&on_rom_file_picked, this, window_, kRomFilters, 9, nullptr, false);
 }
 
 void StudioApp::open_cover_file_dialog(const std::string& sha1) {
@@ -644,6 +652,9 @@ void StudioApp::process_events() {
                     break;
                 case RomPlatform::PCEngine:
                     manual_import_platform_idx_ = 7;
+                    break;
+                case RomPlatform::Genesis:
+                    manual_import_platform_idx_ = 8;
                     break;
                 default:
                     break;
@@ -1044,12 +1055,13 @@ void StudioApp::render_manual_import_modal() {
 
         // 2. Platform
         const char* kPlatforms[] = {
-            "Nintendo NES (nes)",       "Super Nintendo (snes)",    "Game Boy (gb)",
-            "Game Boy Color (gbc)",     "Game Boy Advance (gba)",   "Sega Master System (sms)",
-            "Sega Game Gear (gg)",      "PC Engine / TG-16 (pce)",
+            "Nintendo NES (nes)",   "Super Nintendo (snes)",   "Game Boy (gb)",
+            "Game Boy Color (gbc)", "Game Boy Advance (gba)",  "Sega Master System (sms)",
+            "Sega Game Gear (gg)",  "PC Engine / TG-16 (pce)", "Sega Genesis / MD (genesis)",
         };
-        const char* kPlatformKeys[] = {"nes", "snes", "gb", "gbc", "gba", "sms", "gg", "pce"};
-        manual_import_platform_idx_ = std::clamp(manual_import_platform_idx_, 0, 7);
+        const char* kPlatformKeys[] = {"nes", "snes", "gb",  "gbc",    "gba",
+                                       "sms", "gg",   "pce", "genesis"};
+        manual_import_platform_idx_ = std::clamp(manual_import_platform_idx_, 0, 8);
 
         ImGui::TextColored(ThemeColors::TextPrimary, "Consola / Plataforma:");
         ImGui::SetNextItemWidth(-1.0f);

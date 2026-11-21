@@ -75,8 +75,7 @@ RomInfo detect_rom(const std::filesystem::path& path) {
         const std::string ext_chk = path.extension().string();
         const bool is_sms_ext = (ext_chk == ".sms" || ext_chk == ".SMS");
         const bool is_gg_ext = (ext_chk == ".gg" || ext_chk == ".GG");
-        const size_t sms_off =
-            (data.size() > 512U && (data.size() % 16384U) == 512U) ? 512U : 0U;
+        const size_t sms_off = (data.size() > 512U && (data.size() % 16384U) == 512U) ? 512U : 0U;
         const uint8_t* sms_rom = data.data() + sms_off;
         const size_t sms_sz = data.size() - sms_off;
 
@@ -87,15 +86,16 @@ RomInfo detect_rom(const std::filesystem::path& path) {
         for (size_t off : kTmrOffsets) {
             if (off + 16U <= sms_sz && std::memcmp(sms_rom + off, "TMR SEGA", 8) == 0) {
                 has_tmr_sega = true;
-                sms_csum = static_cast<uint16_t>(sms_rom[off + 0x0AU] |
-                                                 (static_cast<uint16_t>(sms_rom[off + 0x0BU]) << 8U));
+                sms_csum = static_cast<uint16_t>(
+                    sms_rom[off + 0x0AU] | (static_cast<uint16_t>(sms_rom[off + 0x0BU]) << 8U));
                 region_code = static_cast<uint8_t>((sms_rom[off + 0x0FU] >> 4U) & 0x0FU);
                 break;
             }
         }
 
         if (has_tmr_sega || is_sms_ext || is_gg_ext) {
-            const bool is_gg = is_gg_ext || (has_tmr_sega && region_code >= 5U && region_code <= 7U);
+            const bool is_gg =
+                is_gg_ext || (has_tmr_sega && region_code >= 5U && region_code <= 7U);
             info.platform = is_gg ? RomPlatform::GameGear : RomPlatform::MasterSystem;
             info.rom_size_kb = sms_sz / 1024U;
             info.checksum = sms_csum;
@@ -121,6 +121,42 @@ RomInfo detect_rom(const std::filesystem::path& path) {
             info.sha1 = dragon::sha1_hex(std::span<const uint8_t>(pce_rom, pce_sz));
             info.clean_name = clean_title_from_path(path);
             info.internal_title = info.clean_name;
+            return info;
+        }
+    }
+
+    // 1.7. Check Sega Genesis / Mega Drive (.md, .bin, .gen, .smd)
+    {
+        const std::string ext_chk = path.extension().string();
+        const bool is_md_ext =
+            (ext_chk == ".md" || ext_chk == ".MD" || ext_chk == ".gen" || ext_chk == ".GEN" ||
+             ext_chk == ".smd" || ext_chk == ".SMD" || ext_chk == ".bin" || ext_chk == ".BIN");
+        const bool has_sega_hdr =
+            (data.size() >= 0x200U && std::memcmp(data.data() + 0x100, "SEGA", 4) == 0);
+        const bool is_smd_hdr =
+            (data.size() >= 512U + 16384U && ((data.size() - 512U) % 16384U) == 0U &&
+             data[8] == 0xAAU && data[9] == 0xBBU);
+        if (has_sega_hdr || is_smd_hdr ||
+            (is_md_ext && ext_chk != ".bin" && ext_chk != ".BIN" && data.size() >= 0x200U)) {
+            info.platform = RomPlatform::Genesis;
+            info.rom_size_kb = (is_smd_hdr ? (data.size() - 512U) : data.size()) / 1024U;
+            info.smc_header = is_smd_hdr;
+            if (has_sega_hdr) {
+                info.checksum =
+                    static_cast<uint16_t>((static_cast<uint16_t>(data[0x18E]) << 8U) | data[0x18F]);
+                std::string_view raw_title(reinterpret_cast<const char*>(data.data() + 0x150), 48);
+                info.internal_title = sanitize_internal_title(raw_title);
+                if (info.internal_title.empty()) {
+                    std::string_view dom_title(reinterpret_cast<const char*>(data.data() + 0x120),
+                                               48);
+                    info.internal_title = sanitize_internal_title(dom_title);
+                }
+            }
+            if (info.internal_title.empty()) {
+                info.internal_title = clean_title_from_path(path);
+            }
+            info.clean_name = clean_title_from_path(path);
+            info.sha1 = dragon::sha1_hex(std::span<const uint8_t>(data.data(), data.size()));
             return info;
         }
     }

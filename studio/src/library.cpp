@@ -184,6 +184,10 @@ void scan_dir_for_executables(const std::filesystem::path& dir, std::filesystem:
 
 RomPlatform parse_platform_hint(const std::string& s) {
     const std::string l = lower(s);
+    if (l.find("genesis") != std::string::npos || l.find("mega drive") != std::string::npos ||
+        l.find("68000") != std::string::npos || l == "md") {
+        return RomPlatform::Genesis;
+    }
     if (l.find("pc engine") != std::string::npos || l.find("turbografx") != std::string::npos ||
         l.find("huc6280") != std::string::npos || l == "pce") {
         return RomPlatform::PCEngine;
@@ -237,6 +241,8 @@ std::string platform_key(RomPlatform p) {
             return "gg";
         case RomPlatform::PCEngine:
             return "pce";
+        case RomPlatform::Genesis:
+            return "genesis";
         default:
             return "unknown";
     }

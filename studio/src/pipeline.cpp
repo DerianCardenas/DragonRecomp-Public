@@ -68,18 +68,21 @@ std::filesystem::path find_tool(const std::string& name) {
             exe_dir / "gba" / "recompiler" / n,
             exe_dir / "sms" / "recompiler" / n,
             exe_dir / "pce" / "recompiler" / n,
+            exe_dir / "md" / "recompiler" / n,
             exe_dir / ".." / "nes" / "recompiler" / n,
             exe_dir / ".." / "snes" / "recompiler" / n,
             exe_dir / ".." / "gb" / "recompiler" / n,
             exe_dir / ".." / "gba" / "recompiler" / n,
             exe_dir / ".." / "sms" / "recompiler" / n,
             exe_dir / ".." / "pce" / "recompiler" / n,
+            exe_dir / ".." / "md" / "recompiler" / n,
             std::filesystem::current_path() / "build" / "nes" / "recompiler" / n,
             std::filesystem::current_path() / "build" / "snes" / "recompiler" / n,
             std::filesystem::current_path() / "build" / "gb" / "recompiler" / n,
             std::filesystem::current_path() / "build" / "gba" / "recompiler" / n,
             std::filesystem::current_path() / "build" / "sms" / "recompiler" / n,
             std::filesystem::current_path() / "build" / "pce" / "recompiler" / n,
+            std::filesystem::current_path() / "build" / "md" / "recompiler" / n,
         };
         for (const auto& p : candidates) {
             if (std::filesystem::exists(p)) {
@@ -813,6 +816,8 @@ bool Pipeline::generate_initial_toml(const RomInfo& rom, const std::filesystem::
         platform_subdir = "sms";
     } else if (rom.platform == RomPlatform::PCEngine) {
         platform_subdir = "pce";
+    } else if (rom.platform == RomPlatform::Genesis) {
+        platform_subdir = "md";
     }
     const auto games_dir = repo_root / platform_subdir / "games";
     if (std::filesystem::exists(games_dir)) {
@@ -1007,6 +1012,15 @@ bool Pipeline::generate_initial_toml(const RomInfo& rom, const std::filesystem::
             << "[output]\n"
             << "dir         = \"generated\"\n"
             << "split_every = 200\n\n";
+    } else if (rom.platform == RomPlatform::Genesis) {
+        out << "[game]\n"
+            << "name     = \"" << toml_rom_name << "\"\n"
+            << "platform = \"genesis\"\n"
+            << "rom      = \"" << toml_rom_path << "\"\n"
+            << "sha1     = \"" << rom.sha1 << "\"\n\n"
+            << "[output]\n"
+            << "dir         = \"generated\"\n"
+            << "split_every = 256\n\n";
     }
 
     return true;
@@ -1040,6 +1054,10 @@ bool Pipeline::compile_c_to_binary(const RomInfo& rom, const std::filesystem::pa
         runtime_dir = "pce";
         runtime_lib_name = "libpce_runtime.a";
         main_cpp_name = "pce_recomp_game_main.cpp";
+    } else if (rom.platform == RomPlatform::Genesis) {
+        runtime_dir = "md";
+        runtime_lib_name = "libmd_runtime.a";
+        main_cpp_name = "md_recomp_game_main.cpp";
     }
     const auto main_cpp = repo_root / runtime_dir / "runtime" / "src" / main_cpp_name;
     const auto runtime_inc = repo_root / runtime_dir / "runtime" / "include";
@@ -1187,7 +1205,7 @@ bool Pipeline::compile_c_to_binary(const RomInfo& rom, const std::filesystem::pa
     // 2. Compile game runner C++20 source. The -D string-literal macros are
     //    passed as single argv elements with proper C-literal escaping.
     const auto main_obj = gen_dir / "game_main.o";
-    const std::vector<std::string> cpp_argv = {
+    std::vector<std::string> cpp_argv = {
         cxx_bin,
         c_opt_flag,
         "-std=c++20",
@@ -1202,6 +1220,9 @@ bool Pipeline::compile_c_to_binary(const RomInfo& rom, const std::filesystem::pa
         "-DDRAGON_DEFAULT_ROM_PATH=" + c_str_literal(rom.file_path.generic_string()),
         "-DDRAGON_DEFAULT_ROM_SHA1=" + c_str_literal(rom.sha1),
     };
+    if (rom.platform == RomPlatform::Genesis) {
+        cpp_argv.push_back("-I" + (repo_root / "sms" / "runtime" / "include").string());
+    }
 
     std::string spawn_err;
     const ProcResult r_cpp = run_process(cpp_argv, &spawn_err);
@@ -1237,6 +1258,9 @@ bool Pipeline::compile_c_to_binary(const RomInfo& rom, const std::filesystem::pa
     }
     link_argv.push_back(main_obj.string());
     link_argv.push_back(runtime_archive.string());
+    if (rom.platform == RomPlatform::Genesis) {
+        link_argv.push_back((build_dir / "sms" / "runtime" / "libsms_runtime.a").string());
+    }
     link_argv.push_back(common_archive.string());
     link_argv.push_back("-lSDL3");
     link_argv.push_back("-o");
@@ -1253,6 +1277,9 @@ bool Pipeline::compile_c_to_binary(const RomInfo& rom, const std::filesystem::pa
     link_argv.push_back(main_obj.string());
     link_argv.push_back("-Wl,--start-group");
     link_argv.push_back(runtime_archive.string());
+    if (rom.platform == RomPlatform::Genesis) {
+        link_argv.push_back((build_dir / "sms" / "runtime" / "libsms_runtime.a").string());
+    }
     link_argv.push_back(common_archive.string());
     link_argv.push_back("-Wl,--end-group");
     link_argv.push_back("-Wl,-rpath,$ORIGIN/lib:$ORIGIN");
@@ -1338,6 +1365,9 @@ bool Pipeline::compile_windows_binary(const RomInfo& rom, const std::filesystem:
     } else if (rom.platform == RomPlatform::PCEngine) {
         runtime_dir = "pce";
         main_cpp_name = "pce_recomp_game_main.cpp";
+    } else if (rom.platform == RomPlatform::Genesis) {
+        runtime_dir = "md";
+        main_cpp_name = "md_recomp_game_main.cpp";
     }
     const auto main_cpp = repo_root / runtime_dir / "runtime" / "src" / main_cpp_name;
     const auto runtime_inc = repo_root / runtime_dir / "runtime" / "include";
@@ -1453,12 +1483,16 @@ void Pipeline::run_worker(RomInfo rom) {
         append_log(LogLevel::Message, "GBA " + (rom.game_code.empty() ? "AGB" : rom.game_code) +
                                           " (" + rom.save_type_str + ")");
     } else if (rom.platform == RomPlatform::MasterSystem || rom.platform == RomPlatform::GameGear) {
-        append_log(LogLevel::Message,
-                   std::string(rom.platform == RomPlatform::GameGear ? "Game Gear" : "Master System") +
-                       " (" + std::to_string(rom.rom_size_kb) + " KB)");
+        append_log(
+            LogLevel::Message,
+            std::string(rom.platform == RomPlatform::GameGear ? "Game Gear" : "Master System") +
+                " (" + std::to_string(rom.rom_size_kb) + " KB)");
     } else if (rom.platform == RomPlatform::PCEngine) {
         append_log(LogLevel::Message,
                    "PC Engine / TG-16 (" + std::to_string(rom.rom_size_kb) + " KB)");
+    } else if (rom.platform == RomPlatform::Genesis) {
+        append_log(LogLevel::Message,
+                   "Sega Genesis / Mega Drive (" + std::to_string(rom.rom_size_kb) + " KB)");
     } else {
         append_log(LogLevel::Message,
                    rom.mbc_type_str + " (" + std::to_string(rom.rom_size_kb) + " KB)");
@@ -1529,6 +1563,8 @@ void Pipeline::run_worker(RomInfo rom) {
         tool_name = "smsrecomp";
     } else if (rom.platform == RomPlatform::PCEngine) {
         tool_name = "pcerecomp";
+    } else if (rom.platform == RomPlatform::Genesis) {
+        tool_name = "mdrecomp";
     }
     const auto tool_path = find_tool(tool_name);
 
@@ -2041,6 +2077,11 @@ bool Pipeline::optimize_and_recompile() {
             if (ev.bank >= 0x80U || ev.addr < 0x4000U) {
                 continue;
             }
+        } else if (current_rom.platform == RomPlatform::Genesis) {
+            // Genesis entry points must be even addresses inside cartridge ROM ($000100-$3FFFFF)
+            if ((ev.addr & 1U) != 0U || ev.addr < 0x100U || ev.addr >= 0x400000U) {
+                continue;
+            }
         } else if (current_rom.platform == RomPlatform::GameBoyAdvance) {
             // GBA entry points must be in Game Pak ROM address space ($08000000-$0DFFFFFF)
             if (ev.addr < 0x08000000U || ev.addr >= 0x0E000000U) {
@@ -2496,6 +2537,8 @@ DiagnosticResult Pipeline::diagnose_and_repair(DiagnosticSymptom symptom) {
             fb_name = "sms_feedback.toml";
         } else if (current_rom.platform == RomPlatform::PCEngine) {
             fb_name = "pce_feedback.toml";
+        } else if (current_rom.platform == RomPlatform::Genesis) {
+            fb_name = "genesis_feedback.toml";
         }
         const auto console_toml = get_user_knowledge_dir() / fb_name;
         std::ofstream fb(console_toml, std::ios::app);

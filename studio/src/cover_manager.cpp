@@ -12,8 +12,8 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
 #include <urlmon.h>
+#include <windows.h>
 #include <wininet.h>
 #endif
 
@@ -78,20 +78,31 @@ std::filesystem::path CoverManager::covers_dir() {
 bool CoverManager::is_image_file(const std::filesystem::path& path) {
     const std::string ext = path.extension().string();
     std::string lower_ext;
-    for (char c : ext) lower_ext.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+    for (char c : ext)
+        lower_ext.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
     return (lower_ext == ".png" || lower_ext == ".jpg" || lower_ext == ".jpeg" ||
             lower_ext == ".bmp" || lower_ext == ".webp");
 }
 
 std::string CoverManager::get_system_name(const std::string& platform_key) {
-    if (platform_key == "nes") return "Nintendo - Nintendo Entertainment System";
-    if (platform_key == "snes") return "Nintendo - Super Nintendo Entertainment System";
-    if (platform_key == "gb") return "Nintendo - Game Boy";
-    if (platform_key == "gbc") return "Nintendo - Game Boy Color";
-    if (platform_key == "gba") return "Nintendo - Game Boy Advance";
-    if (platform_key == "sms") return "Sega - Master System - Mark III";
-    if (platform_key == "gg") return "Sega - Game Gear";
-    if (platform_key == "pce") return "NEC - PC Engine - TurboGrafx 16";
+    if (platform_key == "nes")
+        return "Nintendo - Nintendo Entertainment System";
+    if (platform_key == "snes")
+        return "Nintendo - Super Nintendo Entertainment System";
+    if (platform_key == "gb")
+        return "Nintendo - Game Boy";
+    if (platform_key == "gbc")
+        return "Nintendo - Game Boy Color";
+    if (platform_key == "gba")
+        return "Nintendo - Game Boy Advance";
+    if (platform_key == "sms")
+        return "Sega - Master System - Mark III";
+    if (platform_key == "gg")
+        return "Sega - Game Gear";
+    if (platform_key == "pce")
+        return "NEC - PC Engine - TurboGrafx 16";
+    if (platform_key == "genesis")
+        return "Sega - Mega Drive - Genesis";
     return "";
 }
 
@@ -109,13 +120,8 @@ std::vector<std::string> CoverManager::get_candidate_names(const GameEntry& entr
     add_unique(entry.title);
 
     const char* regions[] = {
-        " (World)",
-        " (USA)",
-        " (World) (Rev A)",
-        " (USA, Europe)",
-        " (Europe)",
-        " (Japan)",
-        " (Japan) (En)",
+        " (World)",  " (USA)",   " (World) (Rev A)", " (USA, Europe)",
+        " (Europe)", " (Japan)", " (Japan) (En)",
     };
     for (const char* reg : regions) {
         add_unique(entry.title + reg);
@@ -125,7 +131,8 @@ std::vector<std::string> CoverManager::get_candidate_names(const GameEntry& entr
     }
 
     std::string upper_title = entry.title;
-    for (char& c : upper_title) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    for (char& c : upper_title)
+        c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
 
     if (upper_title.find("POKEMON") != std::string::npos ||
         upper_title.find("POKÉMON") != std::string::npos) {
@@ -186,7 +193,8 @@ std::vector<std::string> CoverManager::get_candidate_names(const GameEntry& entr
     return list;
 }
 
-bool CoverManager::download_http_to_file(const std::string& url, const std::filesystem::path& dest) {
+bool CoverManager::download_http_to_file(const std::string& url,
+                                         const std::filesystem::path& dest) {
     std::error_code ec;
     std::filesystem::create_directories(dest.parent_path(), ec);
 
@@ -204,11 +212,13 @@ bool CoverManager::download_http_to_file(const std::string& url, const std::file
     // Fallback to curl.exe
     std::string cmd = "curl.exe -s -f -L -o \"" + dest.string() + "\" \"" + url + "\"";
     int ret = std::system(cmd.c_str());
-    return (ret == 0) && std::filesystem::exists(dest) && (std::filesystem::file_size(dest, ec) > 0);
+    return (ret == 0) && std::filesystem::exists(dest) &&
+           (std::filesystem::file_size(dest, ec) > 0);
 #else
     std::string cmd = "curl -s -f -L -o \"" + dest.string() + "\" \"" + url + "\" >/dev/null 2>&1";
     int ret = std::system(cmd.c_str());
-    return (ret == 0) && std::filesystem::exists(dest) && (std::filesystem::file_size(dest, ec) > 0);
+    return (ret == 0) && std::filesystem::exists(dest) &&
+           (std::filesystem::file_size(dest, ec) > 0);
 #endif
 }
 
@@ -228,7 +238,8 @@ bool CoverManager::download_cover_async(
         if (system.empty()) {
             std::lock_guard<std::mutex> lock(mutex_);
             downloading_.erase(entry.sha1);
-            if (on_complete) on_complete(false, {});
+            if (on_complete)
+                on_complete(false, {});
             return;
         }
 
@@ -237,8 +248,9 @@ bool CoverManager::download_cover_async(
 
         bool success = false;
         for (const auto& cand : candidates) {
-            std::string url = "https://raw.githubusercontent.com/libretro/libretro-thumbnails/master/" +
-                              url_encode(system) + "/Named_Boxarts/" + url_encode(cand) + ".png";
+            std::string url =
+                "https://raw.githubusercontent.com/libretro/libretro-thumbnails/master/" +
+                url_encode(system) + "/Named_Boxarts/" + url_encode(cand) + ".png";
             if (download_http_to_file(url, target_file)) {
                 success = true;
                 break;
@@ -268,7 +280,7 @@ bool CoverManager::download_cover_async(
 }
 
 std::filesystem::path CoverManager::assign_manual_cover(const std::string& sha1,
-                                                         const std::filesystem::path& source_path) {
+                                                        const std::filesystem::path& source_path) {
     if (!std::filesystem::exists(source_path) || !is_image_file(source_path)) {
         return {};
     }
@@ -277,7 +289,8 @@ std::filesystem::path CoverManager::assign_manual_cover(const std::string& sha1,
     std::filesystem::create_directories(dir, ec);
 
     std::string ext = source_path.extension().string();
-    if (ext.empty()) ext = ".png";
+    if (ext.empty())
+        ext = ".png";
     const auto target = dir / (sha1 + ext);
 
     std::filesystem::copy_file(source_path, target,
@@ -354,15 +367,15 @@ SDL_Texture* CoverManager::get_texture(SDL_Renderer* renderer, const std::string
     }
 
     int w = 0, h = 0, channels = 0;
-    unsigned char* pixels = stbi_load_from_memory(buffer.data(), static_cast<int>(buffer.size()),
-                                                  &w, &h, &channels, 4);
+    unsigned char* pixels =
+        stbi_load_from_memory(buffer.data(), static_cast<int>(buffer.size()), &w, &h, &channels, 4);
     if (!pixels) {
         textures_[sha1] = nullptr;
         return nullptr;
     }
 
-    SDL_Texture* tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32,
-                                         SDL_TEXTUREACCESS_STATIC, w, h);
+    SDL_Texture* tex =
+        SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, w, h);
     if (tex) {
         SDL_UpdateTexture(tex, nullptr, pixels, w * 4);
         SDL_SetTextureScaleMode(tex, SDL_SCALEMODE_LINEAR);

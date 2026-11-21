@@ -17,6 +17,7 @@ enum class RomPlatform {
     MasterSystem,
     GameGear,
     PCEngine,
+    Genesis,
 };
 
 struct RomInfo {
@@ -69,6 +70,8 @@ struct RomInfo {
                 return "Sega Game Gear (Z80)";
             case RomPlatform::PCEngine:
                 return "PC Engine / TG-16 (HuC6280)";
+            case RomPlatform::Genesis:
+                return "Sega Genesis / Mega Drive (68000)";
             default:
                 return "Desconocida";
         }
