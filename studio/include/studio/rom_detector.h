@@ -18,6 +18,7 @@ enum class RomPlatform {
     GameGear,
     PCEngine,
     Genesis,
+    NintendoDS,
 };
 
 struct RomInfo {
@@ -72,6 +73,8 @@ struct RomInfo {
                 return "PC Engine / TG-16 (HuC6280)";
             case RomPlatform::Genesis:
                 return "Sega Genesis / Mega Drive (68000)";
+            case RomPlatform::NintendoDS:
+                return "Nintendo DS (ARM9/ARM7)";
             default:
                 return "Desconocida";
         }

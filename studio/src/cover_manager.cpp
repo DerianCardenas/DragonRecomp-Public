@@ -103,6 +103,8 @@ std::string CoverManager::get_system_name(const std::string& platform_key) {
         return "NEC - PC Engine - TurboGrafx 16";
     if (platform_key == "genesis")
         return "Sega - Mega Drive - Genesis";
+    if (platform_key == "nds")
+        return "Nintendo - Nintendo DS";
     return "";
 }
 

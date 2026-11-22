@@ -16,3 +16,5 @@ if(DRAGON_BUILD_TESTS)
   add_test(NAME dragon_common_tests COMMAND dragon_common_tests
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()
+
+add_subdirectory(gpu3d)

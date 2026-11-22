@@ -161,6 +161,39 @@ RomInfo detect_rom(const std::filesystem::path& path) {
         }
     }
 
+    // 1.8. Check Nintendo DS (.nds)
+    {
+        const std::string ext_chk = path.extension().string();
+        const bool is_nds_ext = (ext_chk == ".nds" || ext_chk == ".NDS");
+        if (is_nds_ext && data.size() >= 0x200U) {
+            auto rd32 = [&](size_t o) -> uint32_t {
+                return static_cast<uint32_t>(data[o]) | (static_cast<uint32_t>(data[o + 1]) << 8U) |
+                       (static_cast<uint32_t>(data[o + 2]) << 16U) |
+                       (static_cast<uint32_t>(data[o + 3]) << 24U);
+            };
+            const uint32_t arm9_off = rd32(0x020);
+            const uint32_t arm9_sz = rd32(0x02C);
+            const uint32_t arm7_off = rd32(0x030);
+            const uint32_t arm7_sz = rd32(0x03C);
+            if (arm9_sz > 0U && arm7_sz > 0U &&
+                static_cast<uint64_t>(arm9_off) + arm9_sz <= data.size() &&
+                static_cast<uint64_t>(arm7_off) + arm7_sz <= data.size()) {
+                info.platform = RomPlatform::NintendoDS;
+                info.rom_size_kb = data.size() / 1024U;
+                info.internal_title = sanitize_internal_title(
+                    std::string_view(reinterpret_cast<const char*>(data.data()), 12));
+                info.game_code = sanitize_internal_title(
+                    std::string_view(reinterpret_cast<const char*>(data.data() + 0x0C), 4));
+                if (info.internal_title.empty()) {
+                    info.internal_title = clean_title_from_path(path);
+                }
+                info.clean_name = clean_title_from_path(path);
+                info.sha1 = dragon::sha1_hex(std::span<const uint8_t>(data.data(), data.size()));
+                return info;
+            }
+        }
+    }
+
     // 2. Check SNES header
     // Check if 512-byte SMC header is present
     size_t smc_offset = 0;

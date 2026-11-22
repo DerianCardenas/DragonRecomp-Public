@@ -471,6 +471,8 @@ bool Packager::bundle_runtime_sources(const std::filesystem::path& dest_dir,
         platform_str = "pce";
     } else if (options.rom_info.platform == RomPlatform::Genesis) {
         platform_str = "md";
+    } else if (options.rom_info.platform == RomPlatform::NintendoDS) {
+        platform_str = "nds";
     }
 
     try {
@@ -559,6 +561,8 @@ bool Packager::bundle_runtime_sources(const std::filesystem::path& dest_dir,
             main_name = "pce_recomp_game_main.cpp";
         } else if (options.rom_info.platform == RomPlatform::Genesis) {
             main_name = "md_recomp_game_main.cpp";
+        } else if (options.rom_info.platform == RomPlatform::NintendoDS) {
+            main_name = "nds_recomp_game_main.cpp";
         }
         const auto main_cpp = repo / platform_str / "runtime" / "src" / main_name;
         if (std::filesystem::exists(main_cpp)) {

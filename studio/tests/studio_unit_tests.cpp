@@ -1049,6 +1049,92 @@ void test_pipeline_compile_genesis() {
     std::cout << "  Genesis native compilation passed!\n";
 }
 
+void test_detect_rom_nds() {
+    std::cout << "[Test] detect_rom Nintendo DS...\n";
+    const auto temp_dir = std::filesystem::temp_directory_path() / "dragon_studio_nds_detect";
+    std::filesystem::create_directories(temp_dir);
+    const auto rom_path = temp_dir / "TestDS.nds";
+
+    std::vector<uint8_t> rom(0x8000U, 0U);
+    std::memcpy(&rom[0x000], "DRAGON_DS", 9);
+    std::memcpy(&rom[0x00C], "DRGE", 4);
+    auto wr32 = [&](size_t o, uint32_t v) {
+        rom[o] = static_cast<uint8_t>(v & 0xFFU);
+        rom[o + 1] = static_cast<uint8_t>((v >> 8U) & 0xFFU);
+        rom[o + 2] = static_cast<uint8_t>((v >> 16U) & 0xFFU);
+        rom[o + 3] = static_cast<uint8_t>((v >> 24U) & 0xFFU);
+    };
+    wr32(0x020, 0x4000U);
+    wr32(0x024, 0x02000000U);
+    wr32(0x028, 0x02000000U);
+    wr32(0x02C, 0x100U);
+    wr32(0x030, 0x5000U);
+    wr32(0x034, 0x02380000U);
+    wr32(0x038, 0x02380000U);
+    wr32(0x03C, 0x100U);
+
+    {
+        std::ofstream f(rom_path, std::ios::binary);
+        f.write(reinterpret_cast<const char*>(rom.data()),
+                static_cast<std::streamsize>(rom.size()));
+    }
+
+    const RomInfo info = detect_rom(rom_path);
+    assert(info.is_valid());
+    assert(info.platform == RomPlatform::NintendoDS);
+    assert(info.internal_title == "DRAGON_DS");
+    assert(info.game_code == "DRGE");
+    assert(info.rom_size_kb == 32U);
+
+    std::filesystem::remove_all(temp_dir);
+    std::cout << "  NDS ROM detection passed!\n";
+}
+
+void test_pipeline_compile_nds() {
+    std::cout << "[Test] pipeline compile_c_to_binary Nintendo DS...\n";
+    const auto temp_dir = std::filesystem::temp_directory_path() / "dragon_studio_nds_compile";
+    const auto gen_dir = temp_dir / "generated";
+    std::filesystem::create_directories(gen_dir);
+
+    RomInfo nds_info{};
+    nds_info.platform = RomPlatform::NintendoDS;
+    nds_info.clean_name = "TestNDS";
+    nds_info.internal_title = "TESTNDS";
+    nds_info.game_code = "TNDE";
+    nds_info.file_path = temp_dir / "test.nds";
+    nds_info.sha1 = "0123456789abcdef0123456789abcdef01234567";
+
+    {
+        std::ofstream h(gen_dir / "recomp_funcs.h");
+        h << "#pragma once\n#include \"nds/cpu_state.h\"\n"
+          << "void func_02000000_arm(NdsCpuState* cpu);\n";
+        std::ofstream c(gen_dir / "recomp_dispatch.c");
+        c << "#include \"recomp_funcs.h\"\n"
+          << "const char* g_nds_expected_rom_sha1 = \"\";\n"
+          << "const char* g_nds_default_rom_path = \"\";\n"
+          << "void func_02000000_arm(NdsCpuState* cpu) { cpu->r[0] = 42U; cpu->halted = 2U; }\n"
+          << "const NdsRecompFuncEntry g_nds_recomp_functions[] = { { 0x02000000U, 0U, "
+             "func_02000000_arm } };\n"
+          << "const size_t g_nds_recomp_function_count = 1U;\n";
+    }
+
+    Pipeline pipeline;
+    const auto toml_path = temp_dir / "game_nds.toml";
+    assert(pipeline.generate_initial_toml(nds_info, toml_path));
+    assert(std::filesystem::exists(toml_path));
+
+    const auto out_bin = temp_dir / "game_nds_bin";
+    const bool compiled = pipeline.compile_c_to_binary(nds_info, gen_dir, out_bin);
+    if (!compiled) {
+        std::cerr << "NDS Compilation failed: " << pipeline.error_message() << "\n";
+    }
+    assert(compiled);
+    assert(std::filesystem::exists(out_bin));
+
+    std::filesystem::remove_all(temp_dir);
+    std::cout << "  NDS native compilation passed!\n";
+}
+
 }  // namespace
 
 int main() {
@@ -1059,6 +1145,7 @@ int main() {
     test_detect_rom_sms_and_gg();
     test_detect_rom_pce();
     test_detect_rom_genesis();
+    test_detect_rom_nds();
     test_detect_rom_invalid();
     test_packager();
     test_packager_windows();
@@ -1072,6 +1159,7 @@ int main() {
     test_pipeline_compile_sms();
     test_pipeline_compile_pce();
     test_pipeline_compile_genesis();
+    test_pipeline_compile_nds();
     test_diagnose_and_repair();
     std::cout << "All studio unit tests passed!\n";
     return 0;
