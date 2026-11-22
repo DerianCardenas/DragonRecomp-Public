@@ -1,0 +1,33 @@
+# DragonRecomp — PlayStation Portable (PSP) Hardware & Recompiler Knowledge Base
+
+[platform]
+name = "PlayStation Portable"
+short_name = "psp"
+cpu = "Sony Allegrex (MIPS32 R1/R2 + FPU + VFPU)"
+endian = "little"
+screen_width = 480
+screen_height = 272
+aspect_ratio = "16:9"
+frame_rate_hz = 59.94005994
+audio_sample_rate = 44100
+
+[memory]
+scratchpad_start = 0x00010000
+scratchpad_size  = 0x00004000
+vram_start       = 0x04000000
+vram_size        = 0x00200000
+ram_start        = 0x08000000
+ram_user_start   = 0x08800000
+ram_size         = 0x04000000
+
+[recompiler]
+tool = "psprecomp"
+symbol_prefix = "func_"
+address_digits = 8
+default_load_base = 0x08804000
+has_delay_slots = true
+supports_hle_syscalls = true
+
+[formats]
+extensions = [".iso", ".cso", ".pbp", ".elf", ".prx"]
+libretro_system = "Sony - PlayStation Portable"

@@ -7,6 +7,7 @@
 
 #include "dragon/file_io.h"
 #include "dragon/sha1.h"
+#include "psp/loader.h"
 
 namespace dragon::studio {
 
@@ -47,6 +48,32 @@ RomInfo detect_rom(const std::filesystem::path& path) {
 
     if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path)) {
         return info;
+    }
+
+    // 0. Check PlayStation Portable (.iso / .cso / .pbp / .elf / .prx) via streaming loader
+    //    so multi-hundred-MB UMD ISOs are detected instantly without reading the whole file into
+    //    RAM.
+    {
+        std::string ext_low = path.extension().string();
+        std::transform(ext_low.begin(), ext_low.end(), ext_low.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        if (ext_low == ".iso" || ext_low == ".cso" || ext_low == ".pbp" || ext_low == ".elf" ||
+            ext_low == ".prx") {
+            dragon::psp::LoadedPspImage psp_img;
+            std::string psp_err;
+            const bool loaded = dragon::psp::load_psp_image(path, psp_img, psp_err);
+            if (loaded || psp_img.encrypted_eboot) {
+                info.platform = RomPlatform::PSP;
+                info.file_size = static_cast<size_t>(std::filesystem::file_size(path));
+                info.rom_size_kb = info.file_size / 1024U;
+                info.internal_title =
+                    psp_img.title.empty() ? clean_title_from_path(path) : psp_img.title;
+                info.clean_name = clean_title_from_path(path);
+                info.game_code = psp_img.disc_id;
+                info.sha1 = psp_img.sha1_hex;
+                return info;
+            }
+        }
     }
 
     const auto data = dragon::read_binary_file(path);

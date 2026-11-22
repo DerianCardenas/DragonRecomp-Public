@@ -138,6 +138,8 @@ const char* rom_platform_badge(RomPlatform p) {
             return "MD";
         case RomPlatform::NintendoDS:
             return "NDS";
+        case RomPlatform::PSP:
+            return "PSP";
         default:
             return "ROM";
     }
@@ -165,6 +167,8 @@ const char* rom_platform_display_name(RomPlatform p) {
             return "Sega Genesis / Mega Drive";
         case RomPlatform::NintendoDS:
             return "Nintendo DS";
+        case RomPlatform::PSP:
+            return "PlayStation Portable";
         default:
             return "Consola";
     }
@@ -177,6 +181,14 @@ struct ControlRow {
 
 std::vector<ControlRow> console_controls_for(RomPlatform p) {
     switch (p) {
+        case RomPlatform::PSP:
+            return {
+                {"Cruceta", "Flechas"},
+                {"Stick Analogico", "T / F / G / H  (o mando)"},
+                {"Botones X / O / [] / /\\", "Z / X / A / S  (o J / K / U / I)"},
+                {"Gatillos L / R", "Q / E"},
+                {"Start / Select", "Enter / Shift o Retroceso"},
+            };
         case RomPlatform::NintendoDS:
             return {
                 {"Cruceta", "Flechas / WASD"},
@@ -327,7 +339,7 @@ void StudioApp::render_sidebar() {
     if (info_hov) {
         ImGui::SetTooltip(
             "DragonRecomp Studio v1.0.0\n"
-            "NES · SNES · GB/GBC · GBA · SMS/GG · PCE · Genesis/MD · NDS");
+            "NES · SNES · GB/GBC · GBA · SMS/GG · PCE · Genesis/MD · NDS · PSP");
     }
 
     ImGui::EndChild();
@@ -482,10 +494,10 @@ void StudioApp::render_recompiler() {
 
     ImGui::Dummy(ImVec2(0.f, 6.f));
 
-    // Format chips (.nes, .sfc, .smc, .gb, .gbc, .gba, .sms, .gg, .pce, .md, .gen, .nds)
-    const char* chips[] = {".nes", ".sfc", ".smc", ".gb", ".gbc", ".gba",
-                           ".sms", ".gg",  ".pce", ".md", ".gen", ".nds"};
-    constexpr int kChipCount = 12;
+    // Format chips
+    const char* chips[] = {".nes", ".sfc", ".gb",  ".gbc", ".gba", ".sms", ".gg",
+                           ".pce", ".md",  ".nds", ".iso", ".cso", ".pbp"};
+    constexpr int kChipCount = 13;
     if (fonts_.small)
         ImGui::PushFont(fonts_.small);
     float total_chips_w = 0.0f;

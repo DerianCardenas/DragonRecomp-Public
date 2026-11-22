@@ -565,8 +565,10 @@ void StudioApp::queue_load_rom(const std::filesystem::path& rom_path) {
 
 void StudioApp::open_rom_file_dialog() {
     static const SDL_DialogFileFilter kRomFilters[] = {
-        {"Todas las ROMs soportadas (*.nes, *.sfc, *.gb, *.gba, *.sms, *.gg, *.pce, *.md, *.nds)",
-         "nes;sfc;smc;gb;gbc;gba;sms;gg;pce;sgx;md;bin;gen;smd;nds"},
+        {"Todas las ROMs soportadas (*.nes, *.sfc, *.gb, *.gba, *.sms, *.gg, *.pce, *.md, *.nds, "
+         "*.iso, *.cso, *.pbp)",
+         "nes;sfc;smc;gb;gbc;gba;sms;gg;pce;sgx;md;bin;gen;smd;nds;iso;cso;pbp;elf;prx"},
+        {"PlayStation Portable (*.iso, *.cso, *.pbp, *.elf, *.prx)", "iso;cso;pbp;elf;prx"},
         {"Nintendo DS (*.nds)", "nds"},
         {"Sega Genesis / Mega Drive (*.md, *.bin, *.gen, *.smd)", "md;bin;gen;smd"},
         {"PC Engine / TurboGrafx-16 (*.pce, *.sgx)", "pce;sgx"},
@@ -576,7 +578,7 @@ void StudioApp::open_rom_file_dialog() {
         {"ROMs de NES (*.nes)", "nes"},
         {"ROMs de SNES (*.sfc, *.smc)", "sfc;smc"},
         {"Todos los archivos", "*"}};
-    SDL_ShowOpenFileDialog(&on_rom_file_picked, this, window_, kRomFilters, 10, nullptr, false);
+    SDL_ShowOpenFileDialog(&on_rom_file_picked, this, window_, kRomFilters, 11, nullptr, false);
 }
 
 void StudioApp::open_cover_file_dialog(const std::string& sha1) {
@@ -1064,14 +1066,14 @@ void StudioApp::render_manual_import_modal() {
 
         // 2. Platform
         const char* kPlatforms[] = {
-            "Nintendo NES (nes)",   "Super Nintendo (snes)",   "Game Boy (gb)",
-            "Game Boy Color (gbc)", "Game Boy Advance (gba)",  "Sega Master System (sms)",
-            "Sega Game Gear (gg)",  "PC Engine / TG-16 (pce)", "Sega Genesis / MD (genesis)",
-            "Nintendo DS (nds)",
+            "Nintendo NES (nes)",   "Super Nintendo (snes)",      "Game Boy (gb)",
+            "Game Boy Color (gbc)", "Game Boy Advance (gba)",     "Sega Master System (sms)",
+            "Sega Game Gear (gg)",  "PC Engine / TG-16 (pce)",    "Sega Genesis / MD (genesis)",
+            "Nintendo DS (nds)",    "PlayStation Portable (psp)",
         };
-        const char* kPlatformKeys[] = {"nes", "snes", "gb",  "gbc",     "gba",
-                                       "sms", "gg",   "pce", "genesis", "nds"};
-        manual_import_platform_idx_ = std::clamp(manual_import_platform_idx_, 0, 9);
+        const char* kPlatformKeys[] = {"nes", "snes", "gb",      "gbc", "gba", "sms",
+                                       "gg",  "pce",  "genesis", "nds", "psp"};
+        manual_import_platform_idx_ = std::clamp(manual_import_platform_idx_, 0, 10);
 
         ImGui::TextColored(ThemeColors::TextPrimary, "Consola / Plataforma:");
         ImGui::SetNextItemWidth(-1.0f);

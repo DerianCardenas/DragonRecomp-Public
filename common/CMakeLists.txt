@@ -18,3 +18,4 @@ if(DRAGON_BUILD_TESTS)
 endif()
 
 add_subdirectory(gpu3d)
+add_subdirectory(mips)

@@ -184,6 +184,10 @@ void scan_dir_for_executables(const std::filesystem::path& dir, std::filesystem:
 
 RomPlatform parse_platform_hint(const std::string& s) {
     const std::string l = lower(s);
+    if (l.find("playstation portable") != std::string::npos ||
+        l.find("allegrex") != std::string::npos || l == "psp") {
+        return RomPlatform::PSP;
+    }
     if (l.find("nintendo ds") != std::string::npos || l.find("arm9") != std::string::npos ||
         l == "nds") {
         return RomPlatform::NintendoDS;
@@ -249,6 +253,8 @@ std::string platform_key(RomPlatform p) {
             return "genesis";
         case RomPlatform::NintendoDS:
             return "nds";
+        case RomPlatform::PSP:
+            return "psp";
         default:
             return "unknown";
     }

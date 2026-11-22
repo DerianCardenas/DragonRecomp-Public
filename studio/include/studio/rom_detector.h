@@ -19,6 +19,7 @@ enum class RomPlatform {
     PCEngine,
     Genesis,
     NintendoDS,
+    PSP,
 };
 
 struct RomInfo {
@@ -75,6 +76,8 @@ struct RomInfo {
                 return "Sega Genesis / Mega Drive (68000)";
             case RomPlatform::NintendoDS:
                 return "Nintendo DS (ARM9/ARM7)";
+            case RomPlatform::PSP:
+                return "PlayStation Portable (Allegrex)";
             default:
                 return "Desconocida";
         }

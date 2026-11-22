@@ -52,6 +52,7 @@ target_link_libraries(studio_lib PUBLIC
   pce_runtime
   md_runtime
   nds_runtime
+  psp_runtime
   SDL3::SDL3
   dragon_warnings)
 

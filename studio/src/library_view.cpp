@@ -100,6 +100,8 @@ const char* platform_full_name(const std::string& key) {
         return "Sega Genesis / Mega Drive";
     if (key == "nds")
         return "Nintendo DS";
+    if (key == "psp")
+        return "PlayStation Portable";
     return "Desconocida";
 }
 
@@ -460,10 +462,15 @@ void StudioApp::render_library() {
         std::vector<std::string> keys;
     };
     const ConsoleTabInfo console_tabs[] = {
-        {"Nintendo NES", "nes", {"nes"}},          {"Super Nintendo", "snes", {"snes"}},
-        {"Game Boy / Color", "gb", {"gb", "gbc"}}, {"Game Boy Advance", "gba", {"gba"}},
-        {"Sega MS / GG", "sms", {"sms", "gg"}},    {"PC Engine", "pce", {"pce"}},
-        {"Genesis / MD", "genesis", {"genesis"}},  {"Nintendo DS", "nds", {"nds"}},
+        {"Nintendo NES", "nes", {"nes"}},
+        {"Super Nintendo", "snes", {"snes"}},
+        {"Game Boy / Color", "gb", {"gb", "gbc"}},
+        {"Game Boy Advance", "gba", {"gba"}},
+        {"Sega MS / GG", "sms", {"sms", "gg"}},
+        {"PC Engine", "pce", {"pce"}},
+        {"Genesis / MD", "genesis", {"genesis"}},
+        {"Nintendo DS", "nds", {"nds"}},
+        {"PSP", "psp", {"psp"}},
     };
     constexpr size_t kConsoleTabCount = sizeof(console_tabs) / sizeof(console_tabs[0]);
     library_console_tab_ =

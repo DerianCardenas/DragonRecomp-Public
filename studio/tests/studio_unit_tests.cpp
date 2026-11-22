@@ -1135,6 +1135,106 @@ void test_pipeline_compile_nds() {
     std::cout << "  NDS native compilation passed!\n";
 }
 
+void test_detect_rom_psp() {
+    std::cout << "[Test] detect_rom PlayStation Portable...\n";
+    const auto temp_dir = std::filesystem::temp_directory_path() / "dragon_studio_psp_detect";
+    std::filesystem::create_directories(temp_dir);
+    const auto rom_path = temp_dir / "HomebrewTest.elf";
+
+    // Build minimal valid MIPS32 ELF32 binary
+    std::vector<uint8_t> elf(0x110, 0U);
+    auto put16 = [&](size_t o, uint16_t v) {
+        elf[o] = static_cast<uint8_t>(v & 0xFFU);
+        elf[o + 1] = static_cast<uint8_t>((v >> 8U) & 0xFFU);
+    };
+    auto put32 = [&](size_t o, uint32_t v) {
+        elf[o] = static_cast<uint8_t>(v & 0xFFU);
+        elf[o + 1] = static_cast<uint8_t>((v >> 8U) & 0xFFU);
+        elf[o + 2] = static_cast<uint8_t>((v >> 16U) & 0xFFU);
+        elf[o + 3] = static_cast<uint8_t>((v >> 24U) & 0xFFU);
+    };
+    elf[0] = 0x7F;
+    elf[1] = 'E';
+    elf[2] = 'L';
+    elf[3] = 'F';
+    elf[4] = 1;
+    elf[5] = 1;
+    elf[6] = 1;
+    put16(16, 2);
+    put16(18, 8);
+    put32(20, 1);
+    put32(24, 0x08804000U);
+    put32(28, 52);
+    put16(40, 52);
+    put16(42, 32);
+    put16(44, 1);
+    put32(52 + 0, 1);
+    put32(52 + 4, 0x100);
+    put32(52 + 8, 0x08804000U);
+    put32(52 + 12, 0x08804000U);
+    put32(52 + 16, 16);
+    put32(52 + 20, 16);
+    put32(52 + 24, 5);
+
+    {
+        std::ofstream f(rom_path, std::ios::binary);
+        f.write(reinterpret_cast<const char*>(elf.data()),
+                static_cast<std::streamsize>(elf.size()));
+    }
+
+    const RomInfo info = detect_rom(rom_path);
+    assert(info.is_valid());
+    assert(info.platform == RomPlatform::PSP);
+    assert(!info.sha1.empty());
+    std::filesystem::remove_all(temp_dir);
+    std::cout << "  PSP ROM detection passed!\n";
+}
+
+void test_pipeline_compile_psp() {
+    std::cout << "[Test] pipeline compile_c_to_binary PlayStation Portable...\n";
+    const auto temp_dir = std::filesystem::temp_directory_path() / "dragon_studio_psp_compile";
+    const auto gen_dir = temp_dir / "generated";
+    std::filesystem::create_directories(gen_dir);
+
+    RomInfo psp_info{};
+    psp_info.platform = RomPlatform::PSP;
+    psp_info.clean_name = "TestPSP";
+    psp_info.internal_title = "TESTPSP";
+    psp_info.game_code = "ULUS00001";
+    psp_info.file_path = temp_dir / "test.elf";
+    psp_info.sha1 = "0123456789abcdef0123456789abcdef01234567";
+
+    {
+        std::ofstream h(gen_dir / "psp_recomp.h");
+        h << "#pragma once\n#include \"psp/cpu_state.h\"\n"
+          << "void func_08804000(PspCpuState* cpu);\n";
+        std::ofstream c(gen_dir / "psp_dispatch.c");
+        c << "#include \"psp_recomp.h\"\n"
+          << "const char* g_psp_expected_rom_sha1 = \"\";\n"
+          << "const char* g_psp_default_rom_path = \"\";\n"
+          << "void func_08804000(PspCpuState* cpu) { cpu->gpr[2] = 42U; cpu->halted = 1U; }\n"
+          << "const PspRecompFuncEntry g_psp_recomp_functions[] = { { 0x08804000U, func_08804000 } "
+             "};\n"
+          << "const size_t g_psp_recomp_function_count = 1U;\n";
+    }
+
+    Pipeline pipeline;
+    const auto toml_path = temp_dir / "game_psp.toml";
+    assert(pipeline.generate_initial_toml(psp_info, toml_path));
+    assert(std::filesystem::exists(toml_path));
+
+    const auto out_bin = temp_dir / "game_psp_bin";
+    const bool compiled = pipeline.compile_c_to_binary(psp_info, gen_dir, out_bin);
+    if (!compiled) {
+        std::cerr << "PSP Compilation failed: " << pipeline.error_message() << "\n";
+    }
+    assert(compiled);
+    assert(std::filesystem::exists(out_bin));
+
+    std::filesystem::remove_all(temp_dir);
+    std::cout << "  PSP native compilation passed!\n";
+}
+
 }  // namespace
 
 int main() {
@@ -1146,6 +1246,7 @@ int main() {
     test_detect_rom_pce();
     test_detect_rom_genesis();
     test_detect_rom_nds();
+    test_detect_rom_psp();
     test_detect_rom_invalid();
     test_packager();
     test_packager_windows();
@@ -1160,6 +1261,7 @@ int main() {
     test_pipeline_compile_pce();
     test_pipeline_compile_genesis();
     test_pipeline_compile_nds();
+    test_pipeline_compile_psp();
     test_diagnose_and_repair();
     std::cout << "All studio unit tests passed!\n";
     return 0;

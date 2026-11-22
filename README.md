@@ -1,11 +1,11 @@
 # 🐉 DragonRecomp
 
-**Convierte tus juegos clásicos de NES, SNES, Game Boy / Game Boy Color, Game Boy Advance, Sega Master System / Game Gear, PC Engine / TurboGrafx-16, Sega Genesis / Mega Drive y Nintendo DS en juegos nativos para PC.**
+**Convierte tus juegos clásicos de NES, SNES, Game Boy / Game Boy Color, Game Boy Advance, Sega Master System / Game Gear, PC Engine / TurboGrafx-16, Sega Genesis / Mega Drive, Nintendo DS y PlayStation Portable (PSP) en juegos nativos para PC.**
 
 [![Descargar Studio para Windows](https://img.shields.io/badge/Descargar%20Studio%20v1.0.0-Windows%20x64%20(Portable)-00b4d8?style=for-the-badge&logo=windows)](https://github.com/DerianCardenas/DragonRecomp-Public/releases/latest)
 [![Descargar Studio para Linux](https://img.shields.io/badge/Descargar%20Studio%20v1.0.0-Linux%20x64%20(Portable)-f77f00?style=for-the-badge&logo=linux)](https://github.com/DerianCardenas/DragonRecomp-Public/releases/latest)
 
-DragonRecomp es una herramienta que toma tus juegos favoritos de **NES (Nintendo Entertainment System)**, **Super Nintendo (SNES)**, **Game Boy / Game Boy Color (DMG / CGB)**, **Game Boy Advance (GBA)**, **Sega Master System / Game Gear (SMS / GG)**, **PC Engine / TurboGrafx-16 (PCE / TG-16)**, **Sega Genesis / Mega Drive (MD)** y **Nintendo DS (NDS)** y los recompila en programas nativos para **Windows** (`.exe`) y **Linux**, con rendimiento perfecto a 60 FPS, respuesta instantánea en los controles y sin la pesadez de los emuladores tradicionales.
+DragonRecomp es una herramienta que toma tus juegos favoritos de **NES (Nintendo Entertainment System)**, **Super Nintendo (SNES)**, **Game Boy / Game Boy Color (DMG / CGB)**, **Game Boy Advance (GBA)**, **Sega Master System / Game Gear (SMS / GG)**, **PC Engine / TurboGrafx-16 (PCE / TG-16)**, **Sega Genesis / Mega Drive (MD)**, **Nintendo DS (NDS)** y **PlayStation Portable (PSP)** y los recompila en programas nativos para **Windows** (`.exe`) y **Linux**, con rendimiento perfecto a 60 FPS, respuesta instantánea en los controles y sin la pesadez de los emuladores tradicionales.
 
 ---
 
@@ -16,7 +16,7 @@ DragonRecomp es una herramienta que toma tus juegos favoritos de **NES (Nintendo
 >
 > Para utilizar esta herramienta y generar ejecutables de tus juegos, **es obligatorio que cuentes con una copia digital legal y de respaldo obtenida de tu propio cartucho físico original** de NES, Super Nintendo, Game Boy / Game Boy Color, Game Boy Advance, Sega Master System / Game Gear, PC Engine / TurboGrafx-16, Sega Genesis / Mega Drive o Nintendo DS:
 >
-> - **Formatos admitidos**: Archivos `.nes` (para NES), `.sfc` o `.smc` (para Super Nintendo), `.gb` o `.gbc` (para Game Boy y Game Boy Color), `.gba` (para Game Boy Advance), `.sms` o `.gg` (para Sega Master System y Game Gear), `.pce` o `.sgx` (para PC Engine / TurboGrafx-16), `.md`, `.gen`, `.smd` o `.bin` (para Sega Genesis / Mega Drive) y `.nds` (para Nintendo DS).
+> - **Formatos admitidos**: Archivos `.nes` (para NES), `.sfc` o `.smc` (para Super Nintendo), `.gb` o `.gbc` (para Game Boy y Game Boy Color), `.gba` (para Game Boy Advance), `.sms` o `.gg` (para Sega Master System y Game Gear), `.pce` o `.sgx` (para PC Engine / TurboGrafx-16), `.md`, `.gen`, `.smd` o `.bin` (para Sega Genesis / Mega Drive), `.nds` (para Nintendo DS) y `.iso`, `.cso`, `.pbp`, `.elf` o `.prx` (para PlayStation Portable).
 > - DragonRecomp actúa únicamente como un compilador y reproductor de hardware fiel; no provee material protegido por copyright.
 > - **Esto también aplica a los paquetes exportados**: el ejecutable recompilado solo contiene la lógica del juego traducida a código nativo — los gráficos y el audio los sigue leyendo del ROM original en tiempo de ejecución. Ningún paquete generado por DragonRecomp incluye el ROM. Si compartes la carpeta exportada con alguien, **esa persona necesita poner su propia copia legal** del ROM — exactamente igual que proyectos como [Zelda64Recomp](https://github.com/Mr-Wiseguy/Zelda64Recomp) o nxnative. Ver la sección [📦 ROM original en paquetes exportados](#-rom-original-en-paquetes-exportados) más abajo.
 

@@ -70,6 +70,7 @@ std::filesystem::path find_tool(const std::string& name) {
             exe_dir / "pce" / "recompiler" / n,
             exe_dir / "md" / "recompiler" / n,
             exe_dir / "nds" / "recompiler" / n,
+            exe_dir / "psp" / "recompiler" / n,
             exe_dir / ".." / "nes" / "recompiler" / n,
             exe_dir / ".." / "snes" / "recompiler" / n,
             exe_dir / ".." / "gb" / "recompiler" / n,
@@ -78,6 +79,7 @@ std::filesystem::path find_tool(const std::string& name) {
             exe_dir / ".." / "pce" / "recompiler" / n,
             exe_dir / ".." / "md" / "recompiler" / n,
             exe_dir / ".." / "nds" / "recompiler" / n,
+            exe_dir / ".." / "psp" / "recompiler" / n,
             std::filesystem::current_path() / "build" / "nes" / "recompiler" / n,
             std::filesystem::current_path() / "build" / "snes" / "recompiler" / n,
             std::filesystem::current_path() / "build" / "gb" / "recompiler" / n,
@@ -86,6 +88,7 @@ std::filesystem::path find_tool(const std::string& name) {
             std::filesystem::current_path() / "build" / "pce" / "recompiler" / n,
             std::filesystem::current_path() / "build" / "md" / "recompiler" / n,
             std::filesystem::current_path() / "build" / "nds" / "recompiler" / n,
+            std::filesystem::current_path() / "build" / "psp" / "recompiler" / n,
         };
         for (const auto& p : candidates) {
             if (std::filesystem::exists(p)) {
@@ -823,6 +826,8 @@ bool Pipeline::generate_initial_toml(const RomInfo& rom, const std::filesystem::
         platform_subdir = "md";
     } else if (rom.platform == RomPlatform::NintendoDS) {
         platform_subdir = "nds";
+    } else if (rom.platform == RomPlatform::PSP) {
+        platform_subdir = "psp";
     }
     const auto games_dir = repo_root / platform_subdir / "games";
     if (std::filesystem::exists(games_dir)) {
@@ -1035,6 +1040,15 @@ bool Pipeline::generate_initial_toml(const RomInfo& rom, const std::filesystem::
             << "[output]\n"
             << "dir         = \"generated\"\n"
             << "split_every = 256\n\n";
+    } else if (rom.platform == RomPlatform::PSP) {
+        out << "[game]\n"
+            << "name     = \"" << toml_rom_name << "\"\n"
+            << "platform = \"psp\"\n"
+            << "rom      = \"" << toml_rom_path << "\"\n"
+            << "sha1     = \"" << rom.sha1 << "\"\n\n"
+            << "[output]\n"
+            << "dir         = \"generated\"\n"
+            << "split_every = 256\n\n";
     }
 
     return true;
@@ -1076,6 +1090,10 @@ bool Pipeline::compile_c_to_binary(const RomInfo& rom, const std::filesystem::pa
         runtime_dir = "nds";
         runtime_lib_name = "libnds_runtime.a";
         main_cpp_name = "nds_recomp_game_main.cpp";
+    } else if (rom.platform == RomPlatform::PSP) {
+        runtime_dir = "psp";
+        runtime_lib_name = "libpsp_runtime.a";
+        main_cpp_name = "psp_recomp_game_main.cpp";
     }
     const auto main_cpp = repo_root / runtime_dir / "runtime" / "src" / main_cpp_name;
     const auto runtime_inc = repo_root / runtime_dir / "runtime" / "include";
@@ -1282,9 +1300,15 @@ bool Pipeline::compile_c_to_binary(const RomInfo& rom, const std::filesystem::pa
         link_argv.push_back((build_dir / "sms" / "runtime" / "libsms_runtime.a").string());
     } else if (rom.platform == RomPlatform::NintendoDS) {
         link_argv.push_back((build_dir / "common" / "gpu3d" / "libdragon_gpu3d.a").string());
+    } else if (rom.platform == RomPlatform::PSP) {
+        link_argv.push_back((build_dir / "common" / "mips" / "libdragon_mips.a").string());
+        link_argv.push_back((build_dir / "common" / "gpu3d" / "libdragon_gpu3d.a").string());
     }
     link_argv.push_back(common_archive.string());
     link_argv.push_back("-lSDL3");
+    if (rom.platform == RomPlatform::PSP) {
+        link_argv.push_back("-lz");
+    }
     link_argv.push_back("-o");
     link_argv.push_back(out_bin.string());
 #else
@@ -1303,11 +1327,17 @@ bool Pipeline::compile_c_to_binary(const RomInfo& rom, const std::filesystem::pa
         link_argv.push_back((build_dir / "sms" / "runtime" / "libsms_runtime.a").string());
     } else if (rom.platform == RomPlatform::NintendoDS) {
         link_argv.push_back((build_dir / "common" / "gpu3d" / "libdragon_gpu3d.a").string());
+    } else if (rom.platform == RomPlatform::PSP) {
+        link_argv.push_back((build_dir / "common" / "mips" / "libdragon_mips.a").string());
+        link_argv.push_back((build_dir / "common" / "gpu3d" / "libdragon_gpu3d.a").string());
     }
     link_argv.push_back(common_archive.string());
     link_argv.push_back("-Wl,--end-group");
     link_argv.push_back("-Wl,-rpath,$ORIGIN/lib:$ORIGIN");
     link_argv.push_back("-lSDL3");
+    if (rom.platform == RomPlatform::PSP) {
+        link_argv.push_back("-lz");
+    }
     link_argv.push_back("-lm");
     link_argv.push_back("-lpthread");
     link_argv.push_back("-o");
@@ -1395,6 +1425,9 @@ bool Pipeline::compile_windows_binary(const RomInfo& rom, const std::filesystem:
     } else if (rom.platform == RomPlatform::NintendoDS) {
         runtime_dir = "nds";
         main_cpp_name = "nds_recomp_game_main.cpp";
+    } else if (rom.platform == RomPlatform::PSP) {
+        runtime_dir = "psp";
+        main_cpp_name = "psp_recomp_game_main.cpp";
     }
     const auto main_cpp = repo_root / runtime_dir / "runtime" / "src" / main_cpp_name;
     const auto runtime_inc = repo_root / runtime_dir / "runtime" / "include";
@@ -1597,6 +1630,8 @@ void Pipeline::run_worker(RomInfo rom) {
         tool_name = "mdrecomp";
     } else if (rom.platform == RomPlatform::NintendoDS) {
         tool_name = "ndsrecomp";
+    } else if (rom.platform == RomPlatform::PSP) {
+        tool_name = "psprecomp";
     }
     const auto tool_path = find_tool(tool_name);
 
@@ -1604,7 +1639,8 @@ void Pipeline::run_worker(RomInfo rom) {
         tool_path.string(), toml_path_.string(), "--rom", rom.file_path.string(), "--out",
         gen_dir.string(),
     };
-    if (rom.platform != RomPlatform::GameBoyAdvance && rom.platform != RomPlatform::NintendoDS) {
+    if (rom.platform != RomPlatform::GameBoyAdvance && rom.platform != RomPlatform::NintendoDS &&
+        rom.platform != RomPlatform::PSP) {
         recomp_argv.push_back("--single-file");
     }
 
@@ -2573,6 +2609,8 @@ DiagnosticResult Pipeline::diagnose_and_repair(DiagnosticSymptom symptom) {
             fb_name = "genesis_feedback.toml";
         } else if (current_rom.platform == RomPlatform::NintendoDS) {
             fb_name = "nds_feedback.toml";
+        } else if (current_rom.platform == RomPlatform::PSP) {
+            fb_name = "psp_feedback.toml";
         }
         const auto console_toml = get_user_knowledge_dir() / fb_name;
         std::ofstream fb(console_toml, std::ios::app);

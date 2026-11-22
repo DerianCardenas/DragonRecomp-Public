@@ -13,6 +13,10 @@ build/
 *.gen
 *.smd
 *.nds
+*.iso
+*.cso
+*.pbp
+*.prx
 .cache/
 
 # Build directories
@@ -31,6 +35,7 @@ sms/games/*/generated/
 pce/games/*/generated/
 md/games/*/generated/
 nds/games/*/generated/
+psp/games/*/generated/
 fallback.log
 ExportedGames/
 .dragon/
