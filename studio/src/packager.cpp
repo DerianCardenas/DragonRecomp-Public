@@ -475,6 +475,8 @@ bool Packager::bundle_runtime_sources(const std::filesystem::path& dest_dir,
         platform_str = "nds";
     } else if (options.rom_info.platform == RomPlatform::PSP) {
         platform_str = "psp";
+    } else if (options.rom_info.platform == RomPlatform::PS1) {
+        platform_str = "ps1";
     }
 
     try {
@@ -535,13 +537,15 @@ bool Packager::bundle_runtime_sources(const std::filesystem::path& dest_dir,
                         fname != "gb_runner_main.cpp" && fname != "gba_runner_main.cpp" &&
                         fname != "sms_runner_main.cpp" && fname != "pce_runner_main.cpp" &&
                         fname != "md_runner_main.cpp" && fname != "nds_runner_main.cpp" &&
-                        fname != "psp_runner_main.cpp" && fname != "nes_recomp_game_main.cpp" &&
+                        fname != "psp_runner_main.cpp" && fname != "ps1_runner_main.cpp" &&
+                        fname != "nes_recomp_game_main.cpp" &&
                         fname != "snes_recomp_game_main.cpp" &&
                         fname != "gb_recomp_game_main.cpp" && fname != "gba_recomp_game_main.cpp" &&
                         fname != "sms_recomp_game_main.cpp" &&
                         fname != "pce_recomp_game_main.cpp" && fname != "md_recomp_game_main.cpp" &&
                         fname != "nds_recomp_game_main.cpp" &&
-                        fname != "psp_recomp_game_main.cpp") {
+                        fname != "psp_recomp_game_main.cpp" &&
+                        fname != "ps1_recomp_game_main.cpp") {
                         std::filesystem::copy_file(
                             entry.path(), dest_dir / "src" / "runtime" / entry.path().filename(),
                             std::filesystem::copy_options::overwrite_existing);
@@ -570,6 +574,8 @@ bool Packager::bundle_runtime_sources(const std::filesystem::path& dest_dir,
             main_name = "nds_recomp_game_main.cpp";
         } else if (options.rom_info.platform == RomPlatform::PSP) {
             main_name = "psp_recomp_game_main.cpp";
+        } else if (options.rom_info.platform == RomPlatform::PS1) {
+            main_name = "ps1_recomp_game_main.cpp";
         }
         const auto main_cpp = repo / platform_str / "runtime" / "src" / main_name;
         if (std::filesystem::exists(main_cpp)) {

@@ -566,8 +566,10 @@ void StudioApp::queue_load_rom(const std::filesystem::path& rom_path) {
 void StudioApp::open_rom_file_dialog() {
     static const SDL_DialogFileFilter kRomFilters[] = {
         {"Todas las ROMs soportadas (*.nes, *.sfc, *.gb, *.gba, *.sms, *.gg, *.pce, *.md, *.nds, "
-         "*.iso, *.cso, *.pbp)",
-         "nes;sfc;smc;gb;gbc;gba;sms;gg;pce;sgx;md;bin;gen;smd;nds;iso;cso;pbp;elf;prx"},
+         "*.iso, *.cso, *.pbp, *.cue)",
+         "nes;sfc;smc;gb;gbc;gba;sms;gg;pce;sgx;md;bin;gen;smd;nds;iso;cso;pbp;elf;prx;cue;psexe;"
+         "psx"},
+        {"PlayStation 1 (*.cue, *.bin, *.iso, *.psexe, *.psx)", "cue;bin;iso;psexe;psx;exe"},
         {"PlayStation Portable (*.iso, *.cso, *.pbp, *.elf, *.prx)", "iso;cso;pbp;elf;prx"},
         {"Nintendo DS (*.nds)", "nds"},
         {"Sega Genesis / Mega Drive (*.md, *.bin, *.gen, *.smd)", "md;bin;gen;smd"},
@@ -578,7 +580,7 @@ void StudioApp::open_rom_file_dialog() {
         {"ROMs de NES (*.nes)", "nes"},
         {"ROMs de SNES (*.sfc, *.smc)", "sfc;smc"},
         {"Todos los archivos", "*"}};
-    SDL_ShowOpenFileDialog(&on_rom_file_picked, this, window_, kRomFilters, 11, nullptr, false);
+    SDL_ShowOpenFileDialog(&on_rom_file_picked, this, window_, kRomFilters, 12, nullptr, false);
 }
 
 void StudioApp::open_cover_file_dialog(const std::string& sha1) {
@@ -1069,11 +1071,11 @@ void StudioApp::render_manual_import_modal() {
             "Nintendo NES (nes)",   "Super Nintendo (snes)",      "Game Boy (gb)",
             "Game Boy Color (gbc)", "Game Boy Advance (gba)",     "Sega Master System (sms)",
             "Sega Game Gear (gg)",  "PC Engine / TG-16 (pce)",    "Sega Genesis / MD (genesis)",
-            "Nintendo DS (nds)",    "PlayStation Portable (psp)",
+            "Nintendo DS (nds)",    "PlayStation Portable (psp)", "PlayStation 1 (ps1)",
         };
         const char* kPlatformKeys[] = {"nes", "snes", "gb",      "gbc", "gba", "sms",
-                                       "gg",  "pce",  "genesis", "nds", "psp"};
-        manual_import_platform_idx_ = std::clamp(manual_import_platform_idx_, 0, 10);
+                                       "gg",  "pce",  "genesis", "nds", "psp", "ps1"};
+        manual_import_platform_idx_ = std::clamp(manual_import_platform_idx_, 0, 11);
 
         ImGui::TextColored(ThemeColors::TextPrimary, "Consola / Plataforma:");
         ImGui::SetNextItemWidth(-1.0f);

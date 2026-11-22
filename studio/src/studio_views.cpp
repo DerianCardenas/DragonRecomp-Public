@@ -140,6 +140,8 @@ const char* rom_platform_badge(RomPlatform p) {
             return "NDS";
         case RomPlatform::PSP:
             return "PSP";
+        case RomPlatform::PS1:
+            return "PS1";
         default:
             return "ROM";
     }
@@ -169,6 +171,8 @@ const char* rom_platform_display_name(RomPlatform p) {
             return "Nintendo DS";
         case RomPlatform::PSP:
             return "PlayStation Portable";
+        case RomPlatform::PS1:
+            return "PlayStation 1";
         default:
             return "Consola";
     }
@@ -181,6 +185,14 @@ struct ControlRow {
 
 std::vector<ControlRow> console_controls_for(RomPlatform p) {
     switch (p) {
+        case RomPlatform::PS1:
+            return {
+                {"Cruceta", "Flechas / WASD"},
+                {"Botones X / O / [] / /\\", "Z / X / C / V  (o J / K / U / I)"},
+                {"Gatillos L1 / R1", "Q / E"},
+                {"Gatillos L2 / R2", "1 / 3"},
+                {"Start / Select", "Enter / Shift o Retroceso"},
+            };
         case RomPlatform::PSP:
             return {
                 {"Cruceta", "Flechas"},
@@ -339,7 +351,7 @@ void StudioApp::render_sidebar() {
     if (info_hov) {
         ImGui::SetTooltip(
             "DragonRecomp Studio v1.0.0\n"
-            "NES · SNES · GB/GBC · GBA · SMS/GG · PCE · Genesis/MD · NDS · PSP");
+            "NES · SNES · GB/GBC · GBA · SMS/GG · PCE · Genesis/MD · NDS · PSP · PS1");
     }
 
     ImGui::EndChild();
@@ -495,9 +507,9 @@ void StudioApp::render_recompiler() {
     ImGui::Dummy(ImVec2(0.f, 6.f));
 
     // Format chips
-    const char* chips[] = {".nes", ".sfc", ".gb",  ".gbc", ".gba", ".sms", ".gg",
-                           ".pce", ".md",  ".nds", ".iso", ".cso", ".pbp"};
-    constexpr int kChipCount = 13;
+    const char* chips[] = {".nes", ".sfc", ".gb",  ".gba", ".sms", ".pce",
+                           ".md",  ".nds", ".iso", ".cso", ".pbp", ".cue"};
+    constexpr int kChipCount = 12;
     if (fonts_.small)
         ImGui::PushFont(fonts_.small);
     float total_chips_w = 0.0f;

@@ -35,6 +35,7 @@ REQUIRED_TARGETS=(
     "md/recompiler/mdrecomp"
     "nds/recompiler/ndsrecomp"
     "psp/recompiler/psprecomp"
+    "ps1/recompiler/psxrecomp"
 )
 
 NEED_BUILD=0
@@ -47,7 +48,7 @@ done
 
 if [ "${NEED_BUILD}" -eq 1 ]; then
     echo "Compilando dependencias requeridas..."
-    cmake --build "${BUILD_DIR}" --target dragon-studio nesrecomp snesrecomp gbrecomp gbarecomp smsrecomp pcerecomp mdrecomp ndsrecomp psprecomp
+    cmake --build "${BUILD_DIR}" --target dragon-studio nesrecomp snesrecomp gbrecomp gbarecomp smsrecomp pcerecomp mdrecomp ndsrecomp psprecomp psxrecomp
 fi
 
 # 2. Preparar directorio limpio de empaquetado
@@ -66,6 +67,7 @@ cp "${BUILD_DIR}/pce/recompiler/pcerecomp" "${PACKAGE_DIR}/pcerecomp"
 cp "${BUILD_DIR}/md/recompiler/mdrecomp" "${PACKAGE_DIR}/mdrecomp"
 cp "${BUILD_DIR}/nds/recompiler/ndsrecomp" "${PACKAGE_DIR}/ndsrecomp"
 cp "${BUILD_DIR}/psp/recompiler/psprecomp" "${PACKAGE_DIR}/psprecomp"
+cp "${BUILD_DIR}/ps1/recompiler/psxrecomp" "${PACKAGE_DIR}/psxrecomp"
 
 chmod +x "${PACKAGE_DIR}/dragon-studio" \
          "${PACKAGE_DIR}/nesrecomp" \
@@ -76,7 +78,8 @@ chmod +x "${PACKAGE_DIR}/dragon-studio" \
          "${PACKAGE_DIR}/pcerecomp" \
          "${PACKAGE_DIR}/mdrecomp" \
          "${PACKAGE_DIR}/ndsrecomp" \
-         "${PACKAGE_DIR}/psprecomp"
+         "${PACKAGE_DIR}/psprecomp" \
+         "${PACKAGE_DIR}/psxrecomp"
 
 if command -v strip >/dev/null 2>&1; then
     echo "Reduciendo simbolos debug con strip..."
@@ -89,7 +92,8 @@ if command -v strip >/dev/null 2>&1; then
                            "${PACKAGE_DIR}/pcerecomp" \
                            "${PACKAGE_DIR}/mdrecomp" \
                            "${PACKAGE_DIR}/ndsrecomp" \
-                           "${PACKAGE_DIR}/psprecomp" 2>/dev/null || true
+                           "${PACKAGE_DIR}/psprecomp" \
+                           "${PACKAGE_DIR}/psxrecomp" 2>/dev/null || true
 fi
 
 # 4. Incluir libSDL3.so.0 portable

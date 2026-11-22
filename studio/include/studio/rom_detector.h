@@ -20,6 +20,7 @@ enum class RomPlatform {
     Genesis,
     NintendoDS,
     PSP,
+    PS1,
 };
 
 struct RomInfo {
@@ -78,6 +79,8 @@ struct RomInfo {
                 return "Nintendo DS (ARM9/ARM7)";
             case RomPlatform::PSP:
                 return "PlayStation Portable (Allegrex)";
+            case RomPlatform::PS1:
+                return "PlayStation 1 (R3000A + GTE)";
             default:
                 return "Desconocida";
         }

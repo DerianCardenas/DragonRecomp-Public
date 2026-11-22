@@ -14,6 +14,7 @@ option(DRAGON_BUILD_PCE    "Build PC Engine / TurboGrafx-16 recompiler and runti
 option(DRAGON_BUILD_MD     "Build Sega Genesis / Mega Drive recompiler and runtime" ON)
 option(DRAGON_BUILD_NDS    "Build Nintendo DS recompiler and runtime" ON)
 option(DRAGON_BUILD_PSP    "Build PlayStation Portable recompiler and runtime" ON)
+option(DRAGON_BUILD_PS1    "Build PlayStation 1 recompiler and runtime" ON)
 option(DRAGON_BUILD_STUDIO "Build DragonRecomp Studio GUI"     ON)
 option(DRAGON_BUILD_TESTS  "Build tests"                       ON)
 
@@ -76,6 +77,10 @@ endif()
 
 if(DRAGON_BUILD_PSP)
   add_subdirectory(psp)
+endif()
+
+if(DRAGON_BUILD_PS1)
+  add_subdirectory(ps1)
 endif()
 
 if(DRAGON_BUILD_STUDIO)

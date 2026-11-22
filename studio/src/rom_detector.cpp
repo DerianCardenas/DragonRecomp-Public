@@ -7,6 +7,7 @@
 
 #include "dragon/file_io.h"
 #include "dragon/sha1.h"
+#include "ps1/loader.h"
 #include "psp/loader.h"
 
 namespace dragon::studio {
@@ -50,13 +51,27 @@ RomInfo detect_rom(const std::filesystem::path& path) {
         return info;
     }
 
-    // 0. Check PlayStation Portable (.iso / .cso / .pbp / .elf / .prx) via streaming loader
-    //    so multi-hundred-MB UMD ISOs are detected instantly without reading the whole file into
-    //    RAM.
+    // 0. Check PlayStation 1 (.cue / .bin / .iso / .psexe / .psx / .exe) and
+    //    PlayStation Portable (.iso / .cso / .pbp / .elf / .prx) via streaming probes
+    //    so multi-hundred-MB CD/UMD images are detected instantly without loading into RAM.
     {
         std::string ext_low = path.extension().string();
         std::transform(ext_low.begin(), ext_low.end(), ext_low.begin(),
                        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        if (ext_low == ".cue" || ext_low == ".bin" || ext_low == ".iso" || ext_low == ".psexe" ||
+            ext_low == ".psx" || ext_low == ".exe") {
+            std::string ps1_title, ps1_boot, ps1_sha1;
+            if (dragon::ps1::probe_ps1_image(path, ps1_title, ps1_boot, ps1_sha1)) {
+                info.platform = RomPlatform::PS1;
+                info.file_size = static_cast<size_t>(std::filesystem::file_size(path));
+                info.rom_size_kb = info.file_size / 1024U;
+                info.internal_title = ps1_title.empty() ? clean_title_from_path(path) : ps1_title;
+                info.clean_name = clean_title_from_path(path);
+                info.game_code = ps1_boot;
+                info.sha1 = ps1_sha1;
+                return info;
+            }
+        }
         if (ext_low == ".iso" || ext_low == ".cso" || ext_low == ".pbp" || ext_low == ".elf" ||
             ext_low == ".prx") {
             dragon::psp::LoadedPspImage psp_img;

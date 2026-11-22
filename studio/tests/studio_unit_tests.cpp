@@ -1235,6 +1235,83 @@ void test_pipeline_compile_psp() {
     std::cout << "  PSP native compilation passed!\n";
 }
 
+void test_detect_rom_ps1() {
+    std::cout << "[Test] detect_rom PlayStation 1...\n";
+    const auto temp_dir = std::filesystem::temp_directory_path() / "dragon_studio_ps1_detect";
+    std::filesystem::create_directories(temp_dir);
+    const auto rom_path = temp_dir / "DemoPS1.psexe";
+
+    std::vector<uint8_t> exe(2048U + 16U, 0U);
+    std::memcpy(exe.data(), "PS-X EXE", 8);
+    auto put32 = [&](size_t o, uint32_t v) {
+        exe[o] = static_cast<uint8_t>(v & 0xFFU);
+        exe[o + 1] = static_cast<uint8_t>((v >> 8U) & 0xFFU);
+        exe[o + 2] = static_cast<uint8_t>((v >> 16U) & 0xFFU);
+        exe[o + 3] = static_cast<uint8_t>((v >> 24U) & 0xFFU);
+    };
+    put32(0x10U, 0x80010000U);
+    put32(0x18U, 0x80010000U);
+    put32(0x1CU, 16U);
+
+    {
+        std::ofstream f(rom_path, std::ios::binary);
+        f.write(reinterpret_cast<const char*>(exe.data()),
+                static_cast<std::streamsize>(exe.size()));
+    }
+
+    const RomInfo info = detect_rom(rom_path);
+    assert(info.is_valid());
+    assert(info.platform == RomPlatform::PS1);
+    assert(!info.sha1.empty());
+    std::filesystem::remove_all(temp_dir);
+    std::cout << "  PS1 ROM detection passed!\n";
+}
+
+void test_pipeline_compile_ps1() {
+    std::cout << "[Test] pipeline compile_c_to_binary PlayStation 1...\n";
+    const auto temp_dir = std::filesystem::temp_directory_path() / "dragon_studio_ps1_compile";
+    const auto gen_dir = temp_dir / "generated";
+    std::filesystem::create_directories(gen_dir);
+
+    RomInfo ps1_info{};
+    ps1_info.platform = RomPlatform::PS1;
+    ps1_info.clean_name = "TestPS1";
+    ps1_info.internal_title = "TESTPS1";
+    ps1_info.game_code = "SLUS_000.01";
+    ps1_info.file_path = temp_dir / "test.psexe";
+    ps1_info.sha1 = "0123456789abcdef0123456789abcdef01234567";
+
+    {
+        std::ofstream h(gen_dir / "ps1_recomp.h");
+        h << "#pragma once\n#include \"ps1/cpu_state.h\"\n"
+          << "void func_80010000(Ps1CpuState* cpu);\n";
+        std::ofstream c(gen_dir / "ps1_dispatch.c");
+        c << "#include \"ps1_recomp.h\"\n"
+          << "const char* g_ps1_expected_rom_sha1 = \"\";\n"
+          << "const char* g_ps1_default_rom_path = \"\";\n"
+          << "void func_80010000(Ps1CpuState* cpu) { cpu->gpr[2] = 42U; cpu->halted = 1U; }\n"
+          << "const Ps1RecompFuncEntry g_ps1_recomp_functions[] = { { 0x80010000U, func_80010000 } "
+             "};\n"
+          << "const size_t g_ps1_recomp_function_count = 1U;\n";
+    }
+
+    Pipeline pipeline;
+    const auto toml_path = temp_dir / "game_ps1.toml";
+    assert(pipeline.generate_initial_toml(ps1_info, toml_path));
+    assert(std::filesystem::exists(toml_path));
+
+    const auto out_bin = temp_dir / "game_ps1_bin";
+    const bool compiled = pipeline.compile_c_to_binary(ps1_info, gen_dir, out_bin);
+    if (!compiled) {
+        std::cerr << "PS1 Compilation failed: " << pipeline.error_message() << "\n";
+    }
+    assert(compiled);
+    assert(std::filesystem::exists(out_bin));
+
+    std::filesystem::remove_all(temp_dir);
+    std::cout << "  PS1 native compilation passed!\n";
+}
+
 }  // namespace
 
 int main() {
@@ -1247,6 +1324,7 @@ int main() {
     test_detect_rom_genesis();
     test_detect_rom_nds();
     test_detect_rom_psp();
+    test_detect_rom_ps1();
     test_detect_rom_invalid();
     test_packager();
     test_packager_windows();
@@ -1262,6 +1340,7 @@ int main() {
     test_pipeline_compile_genesis();
     test_pipeline_compile_nds();
     test_pipeline_compile_psp();
+    test_pipeline_compile_ps1();
     test_diagnose_and_repair();
     std::cout << "All studio unit tests passed!\n";
     return 0;

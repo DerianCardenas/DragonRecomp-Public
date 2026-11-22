@@ -1,0 +1,32 @@
+[platform]
+name = "PlayStation 1"
+short_name = "ps1"
+cpu = "MIPS R3000A (33.8688 MHz) + GTE (COP2)"
+endian = "little"
+word_bits = 32
+screen_width = 320
+screen_height = 240
+vram_width = 1024
+vram_height = 512
+frame_rate = 60.0
+extensions = [".cue", ".bin", ".iso", ".psexe", ".psx", ".exe"]
+libretro_system = "Sony - PlayStation"
+
+[memory]
+ram_base = 0x80000000
+ram_size = 0x00200000
+scratchpad_base = 0x1F800000
+scratchpad_size = 0x00000400
+io_base = 0x1F801000
+io_size = 0x00002000
+bios_base = 0xBFC00000
+bios_size = 0x00080000
+vram_size = 0x00100000
+spu_ram_size = 0x00080000
+
+[recompiler]
+tool = "psxrecomp"
+runtime_lib = "libps1_runtime.a"
+extra_libs = ["libdragon_mips.a"]
+entry_symbol_prefix = "func_"
+split_every = 256

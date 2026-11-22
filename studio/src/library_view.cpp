@@ -102,6 +102,8 @@ const char* platform_full_name(const std::string& key) {
         return "Nintendo DS";
     if (key == "psp")
         return "PlayStation Portable";
+    if (key == "ps1")
+        return "PlayStation 1";
     return "Desconocida";
 }
 
@@ -471,6 +473,7 @@ void StudioApp::render_library() {
         {"Genesis / MD", "genesis", {"genesis"}},
         {"Nintendo DS", "nds", {"nds"}},
         {"PSP", "psp", {"psp"}},
+        {"PS1", "ps1", {"ps1"}},
     };
     constexpr size_t kConsoleTabCount = sizeof(console_tabs) / sizeof(console_tabs[0]);
     library_console_tab_ =

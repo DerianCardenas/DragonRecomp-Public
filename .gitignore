@@ -17,6 +17,9 @@ build/
 *.cso
 *.pbp
 *.prx
+*.cue
+*.psexe
+*.psx
 .cache/
 
 # Build directories
@@ -36,6 +39,7 @@ pce/games/*/generated/
 md/games/*/generated/
 nds/games/*/generated/
 psp/games/*/generated/
+ps1/games/*/generated/
 fallback.log
 ExportedGames/
 .dragon/

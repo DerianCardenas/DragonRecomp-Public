@@ -188,6 +188,10 @@ RomPlatform parse_platform_hint(const std::string& s) {
         l.find("allegrex") != std::string::npos || l == "psp") {
         return RomPlatform::PSP;
     }
+    if (l.find("playstation 1") != std::string::npos || l.find("r3000a") != std::string::npos ||
+        l == "ps1" || l == "psx") {
+        return RomPlatform::PS1;
+    }
     if (l.find("nintendo ds") != std::string::npos || l.find("arm9") != std::string::npos ||
         l == "nds") {
         return RomPlatform::NintendoDS;
@@ -255,6 +259,8 @@ std::string platform_key(RomPlatform p) {
             return "nds";
         case RomPlatform::PSP:
             return "psp";
+        case RomPlatform::PS1:
+            return "ps1";
         default:
             return "unknown";
     }

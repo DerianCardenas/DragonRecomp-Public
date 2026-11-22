@@ -107,6 +107,8 @@ std::string CoverManager::get_system_name(const std::string& platform_key) {
         return "Nintendo - Nintendo DS";
     if (platform_key == "psp")
         return "Sony - PlayStation Portable";
+    if (platform_key == "ps1")
+        return "Sony - PlayStation";
     return "";
 }
 
